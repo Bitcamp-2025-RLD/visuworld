@@ -1,13 +1,69 @@
-import React from 'react';
-import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
 const Dictaphone = () => {
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition();
+  const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } = useSpeechRecognition();
+  const [filteredTranscript, setFilteredTranscript] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const lastTranscriptLength = useRef(0);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [pendingReset, setPendingReset] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!browserSupportsSpeechRecognition) {
+      console.error("Browser doesn't support speech recognition.");
+      return;
+    }
+
+    SpeechRecognition.startListening({ continuous: true });
+  }, [browserSupportsSpeechRecognition]);
+
+  useEffect(() => {
+    if (!listening || !transcript) return;
+
+    // Normalize transcript by trimming and splitting on spaces, and convert to lowercase
+    const currentWords = transcript.trim().toLowerCase().split(/\s+/);
+
+    if (!isTranscribing) {
+      const visualizeIndex = currentWords.findIndex((word) => word === "visualize");
+      if (visualizeIndex !== -1) {
+        const afterVisualize = currentWords.slice(visualizeIndex).join(" ");
+        setFilteredTranscript(afterVisualize);
+        setIsTranscribing(true);
+        lastTranscriptLength.current = currentWords.length;
+      }
+    } else {
+      const newWords = currentWords.slice(lastTranscriptLength.current);
+      if (newWords.length > 0) {
+        // Append new words to the filtered transcript without truncating
+        setFilteredTranscript((prev) => `${prev} ${newWords.join(" ")}`.trim());
+      }
+      lastTranscriptLength.current = currentWords.length;
+    }
+
+    // Set a short timeout for inactivity detection
+    const timeoutId = setTimeout(() => {
+      if (currentWords.length === lastTranscriptLength.current && filteredTranscript) {
+        console.log("Filtered Transcript (Final):", filteredTranscript);
+        setFilteredTranscript("");
+        setIsTranscribing(false);
+        setPendingReset(false);
+        lastTranscriptLength.current = 0;
+
+        // Reset transcript after short delay
+        resetTranscript();
+      }
+    }, 2000);
+
+    return () => clearTimeout(timeoutId); // Cleanup timeout
+  }, [transcript, listening, filteredTranscript, isTranscribing, resetTranscript]);
+
+  if (!hasMounted) return null;
 
   if (!browserSupportsSpeechRecognition) {
     return <span>Browser doesn't support speech recognition.</span>;
@@ -15,12 +71,10 @@ const Dictaphone = () => {
 
   return (
     <div>
-      <p>Microphone: {listening ? 'on' : 'off'}</p>
-      <button onClick={SpeechRecognition.startListening}>Start</button>
-      <button onClick={SpeechRecognition.stopListening}>Stop</button>
-      <button onClick={resetTranscript}>Reset</button>
-      <p>{transcript}</p>
+      <p>Listening: {listening ? "Yes 🎙️" : "No ❌"}</p>
+      <p>Filtered Transcript: {filteredTranscript || "Waiting for 'visualize'..."}</p>
     </div>
   );
 };
+
 export default Dictaphone;
