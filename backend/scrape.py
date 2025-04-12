@@ -95,7 +95,7 @@ shader_ids = get_all_shader_ids()
 print(f"✅ Got {len(shader_ids)} shader IDs")
 
 results = []
-for i, shader_id in enumerate(shader_ids[:3000]):  # Limit to 3000
+for i, shader_id in enumerate(shader_ids[1050:5000]):  # Limit to 5000
     data = get_shader_from_id(shader_id)
     if not data:
         continue
@@ -126,7 +126,7 @@ for i, shader_id in enumerate(shader_ids[:3000]):  # Limit to 3000
         print(f"❌ Chroma insert failed for {data['id']} - {e}")
         continue
 
-    time.sleep(0.25)
+    time.sleep(0.20)
 
 with open("shaders_sample.json", "w") as f:
     json.dump(results, f, indent=2)
