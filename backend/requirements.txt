@@ -1,0 +1,8 @@
+chromadb
+openai
+python-dotenv
+tiktoken
+google-generativeai
+google-genai
+fastapi
+pydantic
