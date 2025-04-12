@@ -4,351 +4,199 @@ out vec4 fragColor;
 
 uniform vec2 iResolution;
 uniform float iTime;
-// fragCoord is already normalized from -1 to 1 by the host application
+// uniform vec4 iMouse; // Optional: For mouse interaction
 
-// --- Hash functions ---
-// Simple 3D hash -> 1D float
-float hash13(vec3 p) {
-    p = fract(p * vec3(123.34, 234.34, 345.65));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y * p.z);
+// --- Noise Function (Value Noise based) ---
+// Hash function to generate pseudo-random gradient directions
+vec2 hash( vec2 p ) {
+    p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
+    return -1.0 + 2.0 * fract(sin(p)*43758.5453123);
 }
 
-// Simple 3D hash -> 3D float vector
-vec3 hash33(vec3 p) {
-    p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
-             dot(p, vec3(269.5, 183.3, 246.1)),
-             dot(p, vec3(113.5, 271.9, 124.6)));
-    return fract(sin(p) * 43758.5453123);
+// Value Noise function - using gradient sampling
+float noise( vec2 p ) {
+    vec2 i = floor( p );
+    vec2 f = fract( p );
+
+    // Smooth interpolation (quintic smoothstep)
+    vec2 u = f*f*f*(f*(f*6.-15.)+10.);
+
+    // Sample gradient vectors at the 4 grid corners
+    float a = dot( hash( i + vec2(0.0,0.0) ), f - vec2(0.0,0.0) );
+    float b = dot( hash( i + vec2(1.0,0.0) ), f - vec2(1.0,0.0) );
+    float c = dot( hash( i + vec2(0.0,1.0) ), f - vec2(0.0,1.0) );
+    float d = dot( hash( i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) );
+
+    // Interpolate results
+    return mix( mix( a, b, u.x ), mix( c, d, u.x ), u.y );
 }
 
-// --- Noise function (3D Value Noise) ---
-float noise(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f); // Smoothstep interpolation
 
-    // Use 1D hash output for value noise
-    float v000 = hash13(i + vec3(0.0, 0.0, 0.0));
-    float v100 = hash13(i + vec3(1.0, 0.0, 0.0));
-    float v010 = hash13(i + vec3(0.0, 1.0, 0.0));
-    float v110 = hash13(i + vec3(1.0, 1.0, 0.0));
-    float v001 = hash13(i + vec3(0.0, 0.0, 1.0));
-    float v101 = hash13(i + vec3(1.0, 0.0, 1.0));
-    float v011 = hash13(i + vec3(0.0, 1.0, 1.0));
-    float v111 = hash13(i + vec3(1.0, 1.0, 1.0));
-
-    // Trilinear interpolation
-    float v00 = mix(v000, v100, f.x);
-    float v01 = mix(v001, v101, f.x);
-    float v10 = mix(v010, v110, f.x);
-    float v11 = mix(v011, v111, f.x);
-
-    float v0 = mix(v00, v10, f.y);
-    float v1 = mix(v01, v11, f.y);
-
-    return mix(v0, v1, f.z);
-}
-
-// --- Fractional Brownian Motion ---
-float fbm(vec3 p) {
+// Fractional Brownian Motion (FBM) - Sum of noise layers
+float fbm( vec2 p ) {
     float value = 0.0;
     float amplitude = 0.5;
-    float frequency = 1.5;
-    const int OCTAVES = 5;
-    for (int i = 0; i < OCTAVES; i++) {
+    float frequency = 1.0;
+    mat2 rot = mat2(cos(0.75), sin(0.75), -sin(0.75), cos(0.75)); // Rotation matrix
+
+    for (int i = 0; i < 6; i++) { // 6 octaves for detail
         value += amplitude * noise(p * frequency);
         frequency *= 2.0;
         amplitude *= 0.5;
+        p = rot * p; // Rotate domain for each octave to break grid alignment
     }
     return value;
 }
 
-// --- SDFs ---
-// Cone pointing up Y axis, tip at (0,0,0), base radius 'r', height 'h'
-float sdConeUp( vec3 p, float r, float h ) {
-    p.y = max(0.0, min(h, p.y)); // Clamp p within height bounds for stability
-    vec2 q = vec2( length(p.xz), p.y );
-    vec2 tip = vec2(0.0, 0.0);
-    vec2 base_rim = vec2(r, h);
-    vec2 axis_dir = vec2(0.0, 1.0);
-    vec2 slant_dir = normalize(base_rim - tip);
+// --- Terrain Height Function ---
+// Uses FBM to generate dune-like terrain height at a given 2D position
+float terrainHeight(vec2 p) {
+    vec2 p_scaled_large = p * 0.008; // Scale for large dune structures
+    float dunes = fbm(p_scaled_large) * 40.0; // Amplitude for large dunes
 
-    float d = dot(q - tip, slant_dir); // Project onto slant
-    d = clamp(d, 0.0, length(base_rim - tip)); // Clamp projection onto the slant segment
-    vec2 closest_point_on_slant = tip + d * slant_dir;
+    vec2 p_scaled_small = p * 0.08; // Scale for smaller surface details/ripples
+    float ripples = fbm(p_scaled_small) * 2.5; // Amplitude for ripples
 
-    float dist = length(q - closest_point_on_slant);
+    // Modulate ripples based on large dune height (less ripples on crests maybe)
+    ripples *= smoothstep(0.8, 0.4, abs(fbm(p_scaled_large * 0.8))); // Reduce ripples near crests/troughs
 
-    // Determine if inside or outside based on dot product with normal to slant
-    vec2 normal_to_slant = vec2(slant_dir.y, -slant_dir.x);
-    float side = dot(q - tip, normal_to_slant);
-    dist *= sign(side); // Negative distance inside
-
-    // Cap base and top (max combines distances to planes)
-    dist = max(dist, -p.y);      // Distance to base plane y=0 (inside is negative)
-    dist = max(dist, p.y - h);   // Distance to top plane y=h (inside is negative)
-
-    return dist;
+    return dunes + ripples;
 }
 
-// Cone pointing down Y axis, tip at (0,h,0), base radius 'r', height 'h'
-float sdVolcanoCone( vec3 p, float r, float h ) {
-    p.y = h - p.y; // Shift p so tip is at origin, pointing up
-    return sdConeUp(p, r, h);
-}
-
-// Simple plane at y=h
-float sdPlane(vec3 p, float h) {
-    return p.y - h;
-}
-
-// Smooth maximum (for smooth subtraction)
-float smax(float a, float b, float k) {
-    float h = clamp(0.5 + 0.5*(b-a)/k, 0.0, 1.0);
-    return mix(a, b, h) + k*h*(1.0-h); // Use sum for max blend
-}
-
-
-// --- Scene Map ---
-const float VOLCANO_HEIGHT = 1.5;
-const float VOLCANO_RADIUS = 2.0;
-const float CRATER_RADIUS = 0.7;
-const float CRATER_DEPTH = 0.8; // How deep the crater cone goes from the top
-const float GROUND_LEVEL = 0.0;
-
+// --- Scene SDF ---
+// Returns the signed distance from point p to the nearest surface (the ground)
 float map(vec3 p) {
-    // Volcano body: Cone pointing down, tip intended at (0, VOLCANO_HEIGHT, 0)
-    float volcanoDist = sdVolcanoCone(p, VOLCANO_RADIUS, VOLCANO_HEIGHT);
-
-    // Crater: Subtract a smaller cone pointing down.
-    // Tip position of the subtraction cone:
-    vec3 craterConeTipPos = vec3(0.0, VOLCANO_HEIGHT, 0.0);
-    // Adjust radius for subtraction shape if needed
-    float craterSubRadius = CRATER_RADIUS;
-    float craterSubHeight = CRATER_DEPTH;
-    float craterConeDist = sdVolcanoCone(p - vec3(0, VOLCANO_HEIGHT - craterSubHeight, 0), craterSubRadius, craterSubHeight);
-
-    // Smooth subtraction: smax(volcano, -crater)
-    // Negative distance means inside, so -craterConeDist is the "solid" part of the subtraction shape.
-    float combinedDist = smax(volcanoDist, -craterConeDist, 0.15); // Smoothness k=0.15
-
-    // Add noise displacement for ruggedness - apply *after* combining shapes
-    float displacementFreq = 2.0;
-    float displacementAmp = 0.1;
-    // Modulate displacement amplitude based on height (less displacement near base)
-    float heightFactor = smoothstep(GROUND_LEVEL, VOLCANO_HEIGHT * 0.7, p.y);
-    float displacement = displacementAmp * fbm(p * displacementFreq) * heightFactor;
-    combinedDist -= displacement;
-
-    // Ground plane
-    float groundDist = sdPlane(p, GROUND_LEVEL);
-
-    return min(combinedDist, groundDist);
+    // Add some very large scale, slow undulation for variety
+    float base_undulation = sin(p.x * 0.0005 + iTime * 0.01) * cos(p.z * 0.0005) * 15.0;
+    return p.y - (terrainHeight(p.xz) + base_undulation);
 }
 
 // --- Normal Calculation ---
+// Calculates the surface normal at point p using the tetrahedron technique
 vec3 calcNormal(vec3 p) {
-    vec2 e = vec2(0.001, 0.0); // Use a small epsilon
-    // Finite differences (central difference)
-    vec3 n = vec3(
-        map(p + e.xyy) - map(p - e.xyy),
-        map(p + e.yxy) - map(p - e.yxy),
-        map(p + e.yyx) - map(p - e.yyx)
-    );
-    // Handle potential zero vector normal if map() is flat or p is exactly on an edge/corner
-    if (length(n) < 1e-6) {
-       // Fallback normal, e.g., pointing up, or try a larger epsilon
-       return vec3(0.0, 1.0, 0.0);
-    }
-    return normalize(n);
+    const float h = 0.01; // Epsilon for gradient calculation (adjusted slightly)
+    const vec2 k = vec2(1,-1);
+    return normalize( k.xyy * map( p + k.xyy*h ) +
+                      k.yyx * map( p + k.yyx*h ) +
+                      k.yxy * map( p + k.yxy*h ) +
+                      k.xxx * map( p + k.xxx*h ) );
 }
 
-
-// --- Raymarching ---
-float rayMarch(vec3 ro, vec3 rd, out vec3 pHit, out bool hitGround) {
-    float t = 0.0;
-    pHit = ro; // Initialize pHit
-    hitGround = false;
-    const float maxDist = 80.0; // Max ray distance
-    const int maxSteps = 150; // Max steps
-    const float precision = 0.001; // Required precision
-
-    for (int i = 0; i < maxSteps; i++) {
+// --- Raymarching Function ---
+// Marches a ray from origin 'ro' in direction 'rd'
+// Returns distance traveled 't', or max distance if nothing hit
+float raymarch(vec3 ro, vec3 rd) {
+    float t = 0.01; // Start slightly away from origin
+    for (int i = 0; i < 150; i++) { // Max steps
         vec3 p = ro + rd * t;
         float d = map(p);
 
-        // Precision check: Use relative precision based on distance traveled 't'
-        // This helps avoid "surface acne" and overstepping on distant objects
-        if (abs(d) < precision * t) {
-        // if (abs(d) < precision) { // Absolute precision alternative
-            pHit = p;
-            // Check if the hit point is very close to the ground plane's SDF definition
-            hitGround = (abs(sdPlane(p, GROUND_LEVEL)) < precision * 5.0);
-            return t;
-        }
+        // Check for hit (distance threshold increases slightly with distance)
+        if (d < (0.002 * t)) return t;
 
-        // Advance the ray: Ensure a minimum step to avoid stalling in flat areas
-        // Also, don't step further than the max distance
-        t += max(d, precision * 2.0); // Minimum step based on precision
+        // Step forward safely
+        t += max(d * 0.7, 0.01); // Ensure minimum step size, scale step by distance
 
-        if (t > maxDist) {
-            break; // Exceeded max distance
-        }
+        if (t > 3500.0) break; // Max view distance
     }
-    return -1.0; // Miss (no hit within max distance/steps)
+    return 3500.0; // Return max distance if nothing hit
 }
 
-// --- Get Material Color ---
-vec3 getMaterialColor(vec3 p, vec3 normal, bool hitGround) {
-     if (hitGround) {
-        // Ground color with some procedural variation (e.g., patchy noise)
-        float n = noise(p * 0.8); // Low frequency noise
-        vec3 groundCol1 = vec3(0.35, 0.28, 0.22); // Dark soil/rock
-        vec3 groundCol2 = vec3(0.5, 0.4, 0.3);   // Lighter patches
-        return mix(groundCol1, groundCol2, smoothstep(0.4, 0.6, n));
-     } else {
-        // Volcano Rock Color
-        float rockNoise = fbm(p * 3.0); // Higher frequency noise for rock texture
-        vec3 baseRockColor = vec3(0.25, 0.2, 0.18);
-        vec3 darkRockColor = vec3(0.15, 0.12, 0.1);
-        vec3 rockColor = mix(darkRockColor, baseRockColor, smoothstep(0.4, 0.6, rockNoise));
-
-        // Lava Color and Effect
-        float craterRimY = VOLCANO_HEIGHT - 0.1; // Y-level near the top rim
-        float lavaStartHeight = VOLCANO_HEIGHT * 0.5; // Where lava influence begins
-
-        // Intensity based on height (stronger near the top inside the crater)
-        float heightIntensity = smoothstep(lavaStartHeight, craterRimY, p.y);
-
-        // Intensity based on how "inside" the crater cone we are (using the subtraction SDF)
-        vec3 craterConeTipPos = vec3(0.0, VOLCANO_HEIGHT - CRATER_DEPTH, 0.0);
-        float craterSubRadius = CRATER_RADIUS;
-        float craterSubHeight = CRATER_DEPTH;
-        float craterSDFVal = sdConeUp(p - craterConeTipPos, craterSubRadius, craterSubHeight);
-        float insideCraterIntensity = smoothstep(0.1, -0.2, craterSDFVal); // Stronger effect deep inside (negative SDF)
-
-        // Combine intensities
-        float lavaIntensity = heightIntensity * insideCraterIntensity;
-
-        // Pulsating lava effect using animated noise
-        float lavaNoiseFreq = 3.5;
-        float lavaTimeScale = 0.6;
-        float lavaNoise = 0.6 + 0.4 * noise(p * lavaNoiseFreq + vec3(0.0, -iTime * lavaTimeScale, 0.0));
-        lavaNoise = smoothstep(0.5, 0.8, lavaNoise); // Sharpen noise effect
-
-        // Base lava color, make it brighter/hotter
-        vec3 lavaColor = vec3(1.5, 0.4, 0.05) * (1.0 + 0.5 * sin(iTime*1.5 + p.y*4.0 + rockNoise * 5.0)); // Pulsating, noise influenced
-
-        // Mix rock and lava based on combined intensity and noise
-        vec3 finalColor = mix(rockColor, lavaColor, lavaIntensity * lavaNoise);
-
-        // Add dark ash/soot near the very top / rim, potentially based on slope
-        float slope = 1.0 - clamp(normal.y, 0.0, 1.0); // Flatter slope = higher value
-        float ashHeightIntensity = smoothstep(craterRimY - 0.3, VOLCANO_HEIGHT + 0.2, p.y); // Apply in a wider range near the top
-        float ashIntensity = ashHeightIntensity * smoothstep(0.5, 0.8, slope); // More ash on flatter upper slopes
-        finalColor = mix(finalColor, vec3(0.1) * (0.7 + 0.3 * rockNoise), ashIntensity * 0.8);
-
-        return finalColor;
-     }
+// --- Camera Setup Function ---
+// Creates a view matrix for a camera looking from ro to target
+mat3 setCamera(vec3 ro, vec3 target, float roll) {
+    vec3 forward = normalize(target - ro);
+    vec3 initialUp = vec3(sin(roll), cos(roll), 0.0); // Use vec3(0,1,0) for standard up
+    vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward)); // Recalculate right based on world up
+    vec3 up = normalize(cross(forward, right));
+    return mat3(right, up, forward);
 }
-
 
 void main() {
-    // Screen coordinates setup using pre-normalized fragCoord (-1 to 1)
-    vec2 uv = fragCoord.xy;
-    vec2 aspect = vec2(iResolution.x / iResolution.y, 1.0);
-    uv.x *= aspect.x; // Correct for aspect ratio
+    // --- Screen Coordinates & Aspect Ratio ---
+    // fragCoord is pre-normalized from -1 to 1
+    vec2 uv = fragCoord;
+    float aspect = iResolution.x / iResolution.y;
 
-    // Camera setup
-    float camDist = 5.5; // Camera distance from target
-    float angle = iTime * 0.25; // Rotation speed
-    float camHeight = 1.8; // Camera height
-    vec3 ro = vec3(cos(angle) * camDist, camHeight, sin(angle) * camDist); // Camera position rotating around Y axis
-    vec3 ta = vec3(0.0, VOLCANO_HEIGHT * 0.4, 0.0); // Look-at target (slightly above base)
+    // --- Camera Setup ---
+    float timeParam = iTime * 6.0; // Control speed of forward movement
+    vec2 cameraXZ = vec2(sin(iTime * 0.05) * 50.0, timeParam); // Gentle side-to-side drift + forward motion
+    float currentGroundHeight = terrainHeight(cameraXZ);
+    vec3 ro = vec3(cameraXZ.x, currentGroundHeight + 5.0, cameraXZ.y); // Camera position, stays ~5 units above ground
 
-    // Camera basis vectors
-    vec3 ww = normalize(ta - ro); // Forward vector
-    vec3 uu = normalize(cross(vec3(0.0, 1.0, 0.0), ww)); // Right vector
-    vec3 vv = cross(ww, uu); // Up vector (already normalized)
+    // Target point slightly ahead and adjusted for terrain height changes
+    vec2 targetXZ = vec2(sin(iTime * 0.05 + 0.1) * 50.0, timeParam + 30.0); // Look ~30 units ahead
+    float targetGroundHeight = terrainHeight(targetXZ);
+    vec3 target = vec3(targetXZ.x, mix(currentGroundHeight, targetGroundHeight, 0.5) + 2.0, targetXZ.y); // Look towards a point slightly above the ground ahead
 
-    // Ray direction calculation (adjust FOV with the multiplier for ww)
-    float fov = 1.8; // Higher value = narrower FOV
-    vec3 rd = normalize(uv.x * uu + uv.y * vv + fov * ww);
+    // Create camera view matrix
+    mat3 camMatrix = setCamera(ro, target, 0.0); // No camera roll
 
-    // Raymarch the scene
-    vec3 hitPos;
-    bool hitGround;
-    float t = rayMarch(ro, rd, hitPos, hitGround);
+    // Calculate ray direction through the view matrix
+    // Adjust the Z component (1.8 here) to control Field of View (FOV)
+    // Smaller values -> wider FOV, Larger values -> narrower FOV
+    vec3 rd = camMatrix * normalize(vec3(uv.x * aspect, uv.y, 1.8));
 
-    // Default Sky color (simple gradient)
-    vec3 skyColor = vec3(0.3, 0.5, 0.8) - max(rd.y, 0.0) * 0.2; // Slightly darker blue gradient
-    skyColor = mix(skyColor, vec3(0.8, 0.6, 0.5), pow(max(dot(rd, normalize(vec3(0.8, 0.1, 0.2))), 0.0), 8.0)); // Sun glare
+    // --- Raymarching ---
+    float t = raymarch(ro, rd);
 
+    // --- Coloring & Lighting ---
+    vec3 col = vec3(0.0); // Initialize color
 
-    vec3 col = skyColor; // Initialize color to sky
+    // Environment Colors
+    vec3 sunDir = normalize(vec3(0.8, 0.3, -0.5)); // Sun direction (slightly lower)
+    vec3 skyColor = vec3(0.3, 0.5, 0.8); // Sky blue
+    vec3 horizonColor = vec3(0.9, 0.75, 0.6); // Warm horizon/haze
+    vec3 sandColor = vec3(0.95, 0.8, 0.6); // Base sand color
+    vec3 shadowColorFactor = vec3(0.7, 0.65, 0.6); // Multiplier for shadowed areas
+    vec3 fogColor = horizonColor * 0.95; // Fog color based on horizon
 
-    if (t > 0.0) { // If the ray hit something
-        vec3 p = hitPos; // Hit position
-        vec3 normal = calcNormal(p); // Surface normal at hit point
-        vec3 viewDir = -rd; // Direction from surface point to camera
-
-        // Define light source
-        vec3 lightDir = normalize(vec3(0.7, 0.5, -0.6)); // Main directional light
-        vec3 lightColor = vec3(1.0, 0.95, 0.9); // Slightly warm light
-
-        // Get material properties
-        vec3 materialColor = getMaterialColor(p, normal, hitGround);
+    if (t < 3500.0) { // Ray hit the ground
+        vec3 p = ro + rd * t;
+        vec3 normal = calcNormal(p);
 
         // Lighting Calculations
-        float ambient = 0.15; // Ambient light contribution
-        float diffuse = max(0.0, dot(normal, lightDir)); // Diffuse term (Lambertian)
+        float diffuse = max(0.0, dot(normal, sunDir));
+        float ambient = 0.3; // Ambient light level
+        float skyLight = max(0.1, dot(normal, vec3(0.0, 1.0, 0.0))) * 0.3; // Light from the sky dome
 
-        // Specular term (Blinn-Phong) - subtle for rock/ground
-        vec3 halfwayDir = normalize(lightDir + viewDir);
-        float specAngle = max(dot(normal, halfwayDir), 0.0);
-        float specIntensity = hitGround ? 0.1 : 0.4; // Less shiny ground
-        float specPower = hitGround ? 16.0 : 32.0;
-        float specular = pow(specAngle, specPower) * specIntensity;
+        // Basic soft shadow approximation (darken based on AO-like self-occlusion)
+        float occlusion = map(p + normal * 0.5) / 0.5; // Check distance slightly above surface
+        float shadow = mix(0.4, 1.0, smoothstep(0.0, 1.0, occlusion)); // Darken if nearby surface above
 
-        // Shadow (Simple approximation: assume objects cast shadow on themselves/ground)
-        // A proper shadow raymarch would be needed for accurate shadows.
-        // Cheap AO based on normal check:
-        float ao = clamp(map(p + normal * 0.1) / 0.1, 0.0, 1.0); // Occlusion factor based on nearby geometry along normal
-        ao = 0.6 + 0.4 * ao; // Remap to a usable range (0.6 to 1.0)
+        // Combine lighting
+        vec3 lighting = ambient + skyLight + diffuse * shadow * vec3(1.1, 1.0, 0.9); // Slightly warm direct light
 
-        // Combine lighting components
-        col = materialColor * (ambient + diffuse * lightColor) * ao; // Apply ambient, diffuse, AO
-        col += specular * lightColor * ao; // Add specular highlights (also affected by AO)
+        // Surface Color variation based on normal (micro-texture / angle dependence)
+        float fresnel = pow(1.0 - max(0.0, dot(normal, -rd)), 3.0); // Fresnel-like effect for glancing angles
+        vec3 surfaceColor = mix(sandColor, horizonColor, fresnel * 0.5); // Mix with horizon at glancing angles
 
-        // Add emission for lava areas (make them glow)
-        if (!hitGround) {
-            float craterRimY = VOLCANO_HEIGHT - 0.1;
-            float lavaStartHeight = VOLCANO_HEIGHT * 0.5;
-            float heightIntensity = smoothstep(lavaStartHeight, craterRimY, p.y);
-            vec3 craterConeTipPos = vec3(0.0, VOLCANO_HEIGHT - CRATER_DEPTH, 0.0);
-            float craterSDFVal = sdConeUp(p - craterConeTipPos, CRATER_RADIUS, CRATER_DEPTH);
-            float insideCraterIntensity = smoothstep(0.1, -0.2, craterSDFVal);
-            float lavaIntensity = heightIntensity * insideCraterIntensity;
-            float lavaNoise = 0.6 + 0.4 * noise(p * 3.5 + vec3(0.0, -iTime * 0.6, 0.0));
-            lavaNoise = smoothstep(0.5, 0.8, lavaNoise);
-
-            vec3 emissionColor = vec3(1.0, 0.3, 0.05);
-            float emissionStrength = lavaIntensity * lavaNoise * 0.8; // Control emission brightness
-             col += emissionColor * emissionStrength;
-        }
+        // Apply lighting to surface color, modulating shadowed areas
+        col = surfaceColor * lighting * mix(shadowColorFactor, vec3(1.0), diffuse * shadow);
 
 
-        // Fog (Apply exponential fog based on distance)
-        float fogDensity = 0.025;
-        float fogFactor = exp(-t * t * fogDensity); // Exponential squared fog (denser)
-        col = mix(skyColor, col, fogFactor); // Blend scene color with sky color based on fog factor
+        // Fog - Exponential fog based on distance 't'
+        float fogAmount = 1.0 - exp(-t * t * 0.0000005); // Adjusted fog curve (starts further, gets dense)
+        col = mix(col, fogColor, fogAmount);
 
+    } else { // Ray hit the sky
+        // Sky Gradient
+        float skyGradient = pow(max(0.0, rd.y), 0.35); // Bias towards horizon
+        col = mix(horizonColor, skyColor, skyGradient);
+
+        // Sun Disc and Halo
+        float sunDot = dot(rd, sunDir);
+        col += vec3(1.0, 0.95, 0.9) * pow(max(0.0, sunDot), 500.0); // Sharp sun disc
+        col += vec3(1.0, 0.8, 0.6) * pow(max(0.0, sunDot), 15.0) * 0.3; // Softer sun halo
+
+        // Apply slight fog to distant sky
+        col = mix(col, fogColor, 0.1);
     }
 
-    // Basic Tone Mapping & Gamma Correction
-    col = col / (col + vec3(1.0)); // Reinhard tone mapping (simple version)
-    col = pow(col, vec3(1.0 / 2.2)); // Gamma correction
+    // Final Adjustments
+    col = pow(col, vec3(0.4545)); // Approximate Gamma Correction
+    col = clamp(col, 0.0, 1.0); // Clamp final color
 
-    fragColor = vec4(col, 1.0); // Output final color
+    // --- Output ---
+    fragColor = vec4(col, 1.0);
 }

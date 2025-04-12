@@ -101,7 +101,7 @@ for i, shader_id in enumerate(shader_ids[1050:5000]):  # Limit to 5000
         continue
 
     results.append(data)
-    print(f"✔️  {i + 1}/3000 - {data['title']}")
+    print(f"✔️  {i + 1051}/3000 - {data['title']}")
 
     embedding = embed_shader_text(data)
     if not embedding:
