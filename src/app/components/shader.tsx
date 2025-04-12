@@ -9,6 +9,7 @@ interface ShaderProps {
 }
 export default function Shader({vertShader, fragShader}: ShaderProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const materialRef = useRef<THREE.ShaderMaterial>(null);
 
     useEffect(() => {
       const container = containerRef.current;
@@ -44,6 +45,7 @@ export default function Shader({vertShader, fragShader}: ShaderProps) {
           iResolution: { value: new THREE.Vector2(width, height) },
         }
       });
+      materialRef.current = material;
   
       const mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
@@ -73,11 +75,18 @@ export default function Shader({vertShader, fragShader}: ShaderProps) {
         resizeObserver.disconnect();
       };
     }, []);
+
+    useEffect(() => {
+      if (materialRef.current) {
+        materialRef.current.fragmentShader = fragShader;
+        materialRef.current.needsUpdate = true;
+      }
+    }, [fragShader]);
   
     return (
       <div
         ref={containerRef}
-        className="w-96 h-96 relative border border-gray-400"
+        className="w-full h-full relative border border-gray-400"
       />
     );
 }
