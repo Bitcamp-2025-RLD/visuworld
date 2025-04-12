@@ -61,21 +61,18 @@ def query_chroma(prompt: str, n_results=10):
 
 
 def build_prompt(user_prompt: str, results: dict) -> str:
-    """
-    Builds a final prompt by including relevant documents from the ChromaDB query.
-    """
     context = "Here are some example shaders:\n"
 
     for i in range(len(results["documents"][0])):
         meta = results["metadatas"][0][i]
         snippet = results["documents"][0][i][:300]
-
         context += f"""\nExample {i + 1} - {meta["title"]} by {meta["author"]}:
 Description: {meta["description"]}
 Tags: {meta["tags"]}
 Code Snippet:{snippet}
+"""
 
-[REQUIRED] Additional Program Information:
+    context += """[REQUIRED] Additional Program Information:
 fragCoord is passed in as a vec2 from the vertex shader
 fragColor is passed out as a vec4 from the fargment shader
 
@@ -123,8 +120,7 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
   vec3 pa = p - a, ba = b - a;
   float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
   return length( pa - ba*h ) - r;
-}}
-"""
+}}"""
 
     context += f"\nNow, based on the above examples, write a new GLSL fragment shader that creates: **{user_prompt}**.\n\nOutput only the GLSL code."
     return context

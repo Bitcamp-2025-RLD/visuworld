@@ -46,8 +46,9 @@ def build_prompt(user_prompt: str, results: dict) -> str:
 Description: {meta["description"]}
 Tags: {meta["tags"]}
 Code Snippet:{snippet}
+"""
 
-[REQUIRED] Additional Program Information:
+    context += """[REQUIRED] Additional Program Information:
 fragCoord is passed in as a vec2 from the vertex shader
 fragColor is passed out as a vec4 from the fargment shader
 
@@ -95,8 +96,7 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
   vec3 pa = p - a, ba = b - a;
   float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
   return length( pa - ba*h ) - r;
-}}
-"""
+}}"""
 
     context += f"\nNow, based on the above examples, write a new GLSL fragment shader that creates: **{user_prompt}**.\n\nOutput only the GLSL code."
     return context
@@ -120,9 +120,19 @@ if __name__ == "__main__":
     print(result)
 
     # remove backticks and "glsl" from the result
-    result = result.replace("```glsl", "").replace("```", "").strip()
+    cleaned_result = result.replace("```glsl", "").replace("```", "").strip()
 
-    with open("./shaders/shader.frag", "w") as f:
-        f.write(result)
+    # write to shader.frag regardless
+    with open("shader.frag", "w") as f:
+        f.write(cleaned_result)
 
-    print("\n✅ Saved as shaders/shader.frag")
+    choice = input("\n💾 Enter a name to save this shader (or 'Q' to skip): ").strip()
+
+    if choice.lower() == "q":
+        print("❌ Skipped saving shader.")
+    else:
+        filename = f"./shaders/{choice}.frag"
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, "w") as f:
+            f.write(cleaned_result)
+        print(f"✅ Saved as {filename}")

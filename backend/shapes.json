@@ -1,0 +1,267 @@
+[
+    {
+      "id": "sdPlane",
+      "title": "sdPlane",
+      "description": "Distance to a plane at y = 0",
+      "code": "float sdPlane( vec3 p )\n{\n    return p.y;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "plane"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdSphere",
+      "title": "sdSphere",
+      "description": "Distance to a sphere of radius s",
+      "code": "float sdSphere( vec3 p, float s )\n{\n    return length(p) - s;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "sphere"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdBox",
+      "title": "sdBox",
+      "description": "Distance to an axis-aligned box of half-size b",
+      "code": "float sdBox( vec3 p, vec3 b )\n{\n    vec3 d = abs(p) - b;\n    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "box"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdBoxFrame",
+      "title": "sdBoxFrame",
+      "description": "Distance to a box frame shape with edge thickness e",
+      "code": "float sdBoxFrame( vec3 p, vec3 b, float e )\n{\n    p = abs(p) - b;\n    vec3 q = abs(p + e) - e;\n    return min(\n        min(\n            length(max(vec3(p.x, q.y, q.z), 0.0)) + min(max(p.x, max(q.y, q.z)), 0.0),\n            length(max(vec3(q.x, p.y, q.z), 0.0)) + min(max(q.x, max(p.y, q.z)), 0.0)\n        ),\n        length(max(vec3(q.x, q.y, p.z), 0.0)) + min(max(q.x, max(q.y, p.z)), 0.0)\n    );\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "box"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdEllipsoid",
+      "title": "sdEllipsoid",
+      "description": "Approximated distance to an ellipsoid with radii r",
+      "code": "float sdEllipsoid( in vec3 p, in vec3 r ) // approximated\n{\n    float k0 = length(p / r);\n    float k1 = length(p / (r * r));\n    return k0 * (k0 - 1.0) / k1;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "ellipsoid"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdTorus",
+      "title": "sdTorus",
+      "description": "Distance to a torus with major/minor radii given by t",
+      "code": "float sdTorus( vec3 p, vec2 t )\n{\n    return length(vec2(length(p.xz) - t.x, p.y)) - t.y;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "torus"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCappedTorus",
+      "title": "sdCappedTorus",
+      "description": "Distance to a torus clipped on the sides (capped) with radius values ra, rb",
+      "code": "float sdCappedTorus(in vec3 p, in vec2 sc, in float ra, in float rb)\n{\n    p.x = abs(p.x);\n    float k = (sc.y * p.x > sc.x * p.y) ? dot(p.xy, sc) : length(p.xy);\n    return sqrt(dot(p, p) + ra * ra - 2.0 * ra * k) - rb;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "torus"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdHexPrism",
+      "title": "sdHexPrism",
+      "description": "Distance to a hexagonal prism, with vertical half-height h.y",
+      "code": "float sdHexPrism( vec3 p, vec2 h )\n{\n    vec3 q = abs(p);\n    const vec3 k = vec3(-0.8660254, 0.5, 0.57735);\n    p = abs(p);\n    p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;\n    vec2 d = vec2(\n        length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x),\n        p.z - h.y\n    );\n    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "hexagon"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdOctogonPrism",
+      "title": "sdOctogonPrism",
+      "description": "Distance to an octagonal prism of radius r and half-height h",
+      "code": "float sdOctogonPrism( in vec3 p, in float r, float h )\n{\n    const vec3 k = vec3(-0.9238795325, 0.3826834323, 0.4142135623);\n    p = abs(p);\n    p.xy -= 2.0 * min(dot(vec2(k.x, k.y), p.xy), 0.0) * vec2(k.x, k.y);\n    p.xy -= 2.0 * min(dot(vec2(-k.x, k.y), p.xy), 0.0) * vec2(-k.x, k.y);\n    p.xy -= vec2(clamp(p.x, -k.z * r, k.z * r), r);\n    vec2 d = vec2(length(p.xy) * sign(p.y), p.z - h);\n    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "octagon"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCapsule",
+      "title": "sdCapsule",
+      "description": "Distance to a capsule along the line segment a->b with radius r",
+      "code": "float sdCapsule( vec3 p, vec3 a, vec3 b, float r )\n{\n    vec3 pa = p - a;\n    vec3 ba = b - a;\n    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);\n    return length(pa - ba * h) - r;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "capsule"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdRoundCone_1",
+      "title": "sdRoundCone (float-based)",
+      "description": "Distance to a round cone from base radius r1 to top radius r2 and height h",
+      "code": "float sdRoundCone( in vec3 p, in float r1, float r2, float h )\n{\n    vec2 q = vec2(length(p.xz), p.y);\n    float b = (r1 - r2) / h;\n    float a = sqrt(1.0 - b * b);\n    float k = dot(q, vec2(-b, a));\n    if(k < 0.0) return length(q) - r1;\n    if(k > a * h) return length(q - vec2(0.0, h)) - r2;\n    return dot(q, vec2(a, b)) - r1;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cone"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdRoundCone_2",
+      "title": "sdRoundCone (segment-based)",
+      "description": "Distance to a round cone spanning segment a->b with radii r1 and r2",
+      "code": "float sdRoundCone(vec3 p, vec3 a, vec3 b, float r1, float r2)\n{\n    vec3 ba = b - a;\n    float l2 = dot(ba, ba);\n    float rr = r1 - r2;\n    float a2 = l2 - rr * rr;\n    float il2 = 1.0 / l2;\n    vec3 pa = p - a;\n    float y = dot(pa, ba);\n    float z = y - l2;\n    float x2 = dot(pa * l2 - ba * y, pa * l2 - ba * y);\n    float y2 = y * y * l2;\n    float z2 = z * z * l2;\n    float k = sign(rr) * rr * rr * x2;\n    if(sign(z) * a2 * z2 > k) return sqrt(x2 + z2) * il2 - r2;\n    if(sign(y) * a2 * y2 < k) return sqrt(x2 + y2) * il2 - r1;\n    return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cone"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdTriPrism",
+      "title": "sdTriPrism",
+      "description": "Distance to a triangular prism with half-width h.x and half-height h.y",
+      "code": "float sdTriPrism( vec3 p, vec2 h )\n{\n    const float k = sqrt(3.0);\n    h.x *= 0.5 * k;\n    p.xy /= h.x;\n    p.x = abs(p.x) - 1.0;\n    p.y = p.y + 1.0 / k;\n    if(p.x + k * p.y > 0.0) p.xy = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;\n    p.x -= clamp(p.x, -2.0, 0.0);\n    float d1 = length(p.xy) * sign(-p.y) * h.x;\n    float d2 = abs(p.z) - h.y;\n    return length(max(vec2(d1, d2), 0.0)) + min(max(d1, d2), 0.0);\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "prism"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCylinder_1",
+      "title": "sdCylinder (vertical)",
+      "description": "Distance to a vertical cylinder of radius h.x and half-height h.y",
+      "code": "float sdCylinder( vec3 p, vec2 h )\n{\n    vec2 d = abs(vec2(length(p.xz), p.y)) - h;\n    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cylinder"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCylinder_2",
+      "title": "sdCylinder (segment-based)",
+      "description": "Distance to a cylinder spanning segment a->b of radius r",
+      "code": "float sdCylinder(vec3 p, vec3 a, vec3 b, float r)\n{\n    vec3 pa = p - a;\n    vec3 ba = b - a;\n    float baba = dot(ba, ba);\n    float paba = dot(pa, ba);\n    float x = length(pa * baba - ba * paba) - r * baba;\n    float y = abs(paba - baba * 0.5) - baba * 0.5;\n    float x2 = x * x;\n    float y2 = y * y * baba;\n    float d = (max(x, y) < 0.0)\n        ? -min(x2, y2)\n        : (((x > 0.0) ? x2 : 0.0) + ((y > 0.0) ? y2 : 0.0));\n    return sign(d) * sqrt(abs(d)) / baba;\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cylinder"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCone",
+      "title": "sdCone",
+      "description": "Distance to a cone with shape parameters c.x, c.y, and height h",
+      "code": "float sdCone( in vec3 p, in vec2 c, float h )\n{\n    vec2 q = h * vec2(c.x, -c.y) / c.y;\n    vec2 w = vec2(length(p.xz), p.y);\n    vec2 a = w - q * clamp(dot(w, q) / dot(q, q), 0.0, 1.0);\n    vec2 b = w - q * vec2(clamp(w.x / q.x, 0.0, 1.0), 1.0);\n    float k = sign(q.y);\n    float d = min(dot(a, a), dot(b, b));\n    float s = max(k * (w.x * q.y - w.y * q.x), k * (w.y - q.y));\n    return sqrt(d) * sign(s);\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cone"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCappedCone_1",
+      "title": "sdCappedCone (float-based)",
+      "description": "Distance to a cone of height h from radius r1 to r2, capped at both ends",
+      "code": "float sdCappedCone( in vec3 p, in float h, in float r1, in float r2 )\n{\n    vec2 q = vec2(length(p.xz), p.y);\n    vec2 k1 = vec2(r2, h);\n    vec2 k2 = vec2(r2 - r1, 2.0 * h);\n    vec2 ca = vec2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - h);\n    vec2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot(k2, k2), 0.0, 1.0);\n    float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;\n    return s * sqrt(min(dot(ca, ca), dot(cb, cb)));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cone"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdCappedCone_2",
+      "title": "sdCappedCone (segment-based)",
+      "description": "Distance to a cone spanning a->b, from radius ra to rb, capped at both ends",
+      "code": "float sdCappedCone(vec3 p, vec3 a, vec3 b, float ra, float rb)\n{\n    float rba  = rb - ra;\n    float baba = dot(b - a, b - a);\n    float papa = dot(p - a, p - a);\n    float paba = dot(p - a, b - a) / baba;\n    float x = sqrt(papa - paba * paba * baba);\n    float cax = max(0.0, x - ((paba < 0.5) ? ra : rb));\n    float cay = abs(paba - 0.5) - 0.5;\n    float k = rba * rba + baba;\n    float f = clamp((rba * (x - ra) + paba * baba) / k, 0.0, 1.0);\n    float cbx = x - ra - f * rba;\n    float cby = paba - f;\n    float s = (cbx < 0.0 && cay < 0.0) ? -1.0 : 1.0;\n    return s * sqrt(min(cax * cax + cay * cay * baba, cbx * cbx + cby * cby * baba));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "cone"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdSolidAngle",
+      "title": "sdSolidAngle",
+      "description": "Distance to a region limited by a solid angle c and outer radius ra",
+      "code": "float sdSolidAngle(vec3 pos, vec2 c, float ra)\n{\n    vec2 p = vec2(length(pos.xz), pos.y);\n    float l = length(p) - ra;\n    float m = length(p - c * clamp(dot(p, c), 0.0, ra));\n    return max(l, m * sign(c.y * p.x - c.x * p.y));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "angle"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdOctahedron",
+      "title": "sdOctahedron",
+      "description": "Exact distance to an octahedron of 'radius' s",
+      "code": "float sdOctahedron(vec3 p, float s)\n{\n    p = abs(p);\n    float m = p.x + p.y + p.z - s;\n    // exact version\n    vec3 q;\n    if(3.0 * p.x < m) q = p.xyz;\n    else if(3.0 * p.y < m) q = p.yzx;\n    else if(3.0 * p.z < m) q = p.zxy;\n    else return m * 0.57735027;\n    float k = clamp(0.5 * (q.z - q.y + s), 0.0, s);\n    return length(vec3(q.x, q.y - s + k, q.z - k));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "octahedron"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdPyramid",
+      "title": "sdPyramid",
+      "description": "Distance to a pyramid with tip at y=0, base width 1, and total height h",
+      "code": "float sdPyramid( in vec3 p, in float h )\n{\n    float m2 = h * h + 0.25;\n    p.xz = abs(p.xz);\n    p.xz = (p.z > p.x) ? p.zx : p.xz;\n    p.xz -= 0.5;\n    vec3 q = vec3(p.z, h * p.y - 0.5 * p.x, h * p.x + 0.5 * p.y);\n    float s = max(-q.x, 0.0);\n    float t = clamp((q.y - 0.5 * p.z) / (m2 + 0.25), 0.0, 1.0);\n    float a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;\n    float b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);\n    float d2 = (min(q.y, -q.x * m2 - 0.5 * q.y) > 0.0) ? 0.0 : min(a, b);\n    return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.y));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "pyramid"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdRhombus",
+      "title": "sdRhombus",
+      "description": "Distance to a rhombus shape, specified by la, lb, thickness ra, and pivot h",
+      "code": "float sdRhombus(vec3 p, float la, float lb, float h, float ra)\n{\n    p = abs(p);\n    vec2 b = vec2(la, lb);\n    float f = clamp((ndot(b, b - 2.0 * p.xz)) / dot(b, b), -1.0, 1.0);\n    vec2 q = vec2(\n        length(p.xz - 0.5 * b * vec2(1.0 - f, 1.0 + f)) *\n        sign(p.x * b.y + p.z * b.x - b.x * b.y) - ra,\n        p.y - h\n    );\n    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "rhombus"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdHorseshoe",
+      "title": "sdHorseshoe",
+      "description": "Distance to a horseshoe shape, parameterized by rotation (c), radius r, length le, and thickness w",
+      "code": "float sdHorseshoe( in vec3 p, in vec2 c, in float r, in float le, vec2 w )\n{\n    p.x = abs(p.x);\n    float l = length(p.xy);\n    p.xy = mat2(-c.x, c.y, c.y, c.x) * p.xy;\n    p.xy = vec2((p.y > 0.0 || p.x > 0.0) ? p.x : l * sign(-c.x), (p.x > 0.0) ? p.y : l);\n    p.xy = vec2(p.x, abs(p.y - r)) - vec2(le, 0.0);\n    vec2 q = vec2(length(max(p.xy, 0.0)) + min(0.0, max(p.x, p.y)), p.z);\n    vec2 d = abs(q) - w;\n    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "horseshoe"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    },
+    {
+      "id": "sdU",
+      "title": "sdU",
+      "description": "Distance to a U-shaped object with radius r, length le, thickness w",
+      "code": "float sdU( in vec3 p, in float r, in float le, vec2 w )\n{\n    p.x = (p.y > 0.0) ? abs(p.x) : length(p.xy);\n    p.x = abs(p.x - r);\n    p.y = p.y - le;\n    float k = max(p.x, p.y);\n    vec2 q = vec2((k < 0.0) ? -k : length(max(p.xy, 0.0)), abs(p.z)) - w;\n    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n}\n",
+      "tags": ["procedural", "3d", "distancefields", "raymarching", "primitives", "u-shape"],
+      "author": "iq",
+      "views": 0,
+      "likes": 0,
+      "published": 3
+    }
+  ]
+  
