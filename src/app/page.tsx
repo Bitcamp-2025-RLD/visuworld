@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import CodeMirror, { oneDark } from '@uiw/react-codemirror';
 import ShaderView from './components/shaderview';
+import Dictaphone from './components/speech';
 
 function Page() {
   const [frag, setFrag] = useState<string>("");
@@ -26,7 +27,9 @@ function Page() {
 
       {/* Grid Layout */}
       <div className="h-full grid grid-cols-2 grid-rows-3 gap-4 p-4">
-        <div className='bg-black h-full w-full rounded-2xl'></div>
+        <div className='bg-black h-full w-full rounded-2xl text-white p-2'>
+          <Dictaphone></Dictaphone>
+        </div>
         {/* Editor */}
         <div className="bg-white shadow-md rounded-2xl overflow-hidden flex flex-col row-start-2 row-span-2">
           <div className="bg-gray-800 text-white px-4 py-2 font-mono text-sm rounded-t-2xl">

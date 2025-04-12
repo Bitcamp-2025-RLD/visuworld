@@ -38,6 +38,7 @@ const Dictaphone = () => {
         lastTranscriptLength.current = currentWords.length;
       }
     } else {
+      console.log(transcript);
       const newWords = currentWords.slice(lastTranscriptLength.current);
       if (newWords.length > 0) {
         // Append new words to the filtered transcript without truncating
