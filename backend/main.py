@@ -205,8 +205,17 @@ def save_shader(req: SaveShaderRequest):
         "description": "some descriptive text"
       }
     """
-    doc = {"prompt": req.prompt, "code": req.code, "description": req.description, "timestamp": datetime.utcnow()}
-    # Insert into MongoDB
+    normalized_prompt = req.prompt.strip().lower()
+    existing_shader = mongo_shaders_col.find_one({"prompt": normalized_prompt, "code": req.code})
+    print(f"Checking for existing shader with prompt: {normalized_prompt}")
+    print(f"Existing shader: {existing_shader}")
+
+    if existing_shader is not None:
+        raise ValueError(f"Shader with the given prompt already exists. ID: {str(existing_shader['_id'])}")
+
+    # Save the normalized version too
+    doc = {"prompt": normalized_prompt, "code": req.code, "description": req.description, "timestamp": datetime.utcnow()}
+
     result = mongo_shaders_col.insert_one(doc)
     return {"message": "Shader saved successfully", "inserted_id": str(result.inserted_id)}
 

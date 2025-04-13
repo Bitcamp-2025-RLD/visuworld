@@ -4,7 +4,10 @@ import SpeechRecognition, {
     useSpeechRecognition,
 } from "react-speech-recognition";
 
-const Dictaphone = () => {
+interface DictaphoneProps {
+    generateShader: (prompt: string) => void;
+}
+const Dictaphone = ({ generateShader }: DictaphoneProps) => {
     const {
         transcript,
         listening,
@@ -20,6 +23,11 @@ const Dictaphone = () => {
     useEffect(() => {
         setHasMounted(true);
     }, []);
+
+    const customReset = () => {
+        generateShader(filteredTranscript);
+        resetTranscript();
+    };
 
     useEffect(() => {
         if (!browserSupportsSpeechRecognition) {
@@ -47,8 +55,10 @@ const Dictaphone = () => {
                 lastTranscriptLength.current = currentWords.length;
             }
         } else {
-            console.log(transcript);
-            setFilteredTranscript(transcript);
+            // only take after the last occurence of "visualize"
+            const visualizeIndex = currentWords.lastIndexOf("visualize");
+            const afterVisualize = currentWords.slice(visualizeIndex).join(" ");
+            setFilteredTranscript(afterVisualize);
             const newWords = currentWords.slice(lastTranscriptLength.current);
             if (newWords.length > 0) {
                 // Append new words to the filtered transcript without truncating
@@ -80,7 +90,7 @@ const Dictaphone = () => {
                 lastTranscriptLength.current = 0;
 
                 // Reset transcript after short delay
-                resetTranscript();
+                customReset();
             }
         }, 2000);
 
@@ -90,7 +100,7 @@ const Dictaphone = () => {
         listening,
         filteredTranscript,
         isTranscribing,
-        resetTranscript,
+        customReset,
     ]);
 
     if (!hasMounted) return null;
@@ -100,12 +110,39 @@ const Dictaphone = () => {
     }
 
     return (
-        <div>
-            <p>Listening: {listening ? "Yes 🎙️" : "No ❌"}</p>
-            <p>
-                Filtered Transcript:{" "}
-                {filteredTranscript || "Waiting for 'visualize'..."}
-            </p>
+        <div className="relative w-full h-full p-4 flex flex-col justify-start gap-4 text-white rounded-xl shadow-xl">
+            <div className="space-y-2">
+                <h1 className="text-2xl font-extrabold tracking-tight">
+                    Welcome to <span className="text-blue-400">VisuWorld</span>{" "}
+                    <span className="font-semibold">
+                        {listening ? "🎙️" : "❌ (Mic Disabled)"}
+                    </span>{" "}
+                </h1>
+                <p className="text-sm leading-relaxed text-slate-300">
+                    Speak visually engaging virtual landscapes into existence.
+                    VisuWorld is powered by{" "}
+                    <span className="text-blue-400 font-bold">
+                        Google Gemini
+                    </span>{" "}
+                    and customizable{" "}
+                    <span className="text-blue-400 font-bold">GLSL</span>{" "}
+                    programming paradigms. Peer into the other side of the
+                    screen, and let your words shape the world.
+                </p>
+                <div className="text-sm text-slate-400">
+                    (Try saying "visualize" to start, "modify" to change your
+                    VisuWorld, or "reset" to clear it)
+                </div>
+            </div>
+
+            {/* Floating Transcript at Bottom */}
+            <div className="absolute bottom-4 left-4 right-4">
+                <div className="bg-slate-700/80 border border-slate-500 rounded-lg px-4 py-2 text-sm text-slate-100 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out">
+                    {filteredTranscript
+                        ? `🎨 ${filteredTranscript}`
+                        : "🎙️ Listening for a command..."}
+                </div>
+            </div>
         </div>
     );
 };
