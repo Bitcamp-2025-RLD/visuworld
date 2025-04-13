@@ -70,8 +70,11 @@ def query_chroma(prompt: str, n_results=10):
     return collection.query(query_embeddings=[embedding], n_results=n_results)
 
 
-def build_prompt(user_prompt: str, results: dict) -> str:
-    context = "Here are some example shaders:\n"
+def build_prompt(user_prompt: str, results: dict, code: str = None) -> str:
+    context = "You will be generating GLSL fragment shaders targeting WebGL\n"
+    if code is not None:
+        context += f"Here is the shader code you need to modify and send back according to the following code samples and prompt:\n{code}\n\n"
+    context += "Here are some example shaders to reference for code generation:\n"
 
     for i in range(len(results["documents"][0])):
         meta = results["metadatas"][0][i]
@@ -149,6 +152,17 @@ def generate_shader(user_prompt: str) -> str:
     return response.text.strip()
 
 
+def modify_shader(user_prompt: str, shader_code: str) -> str:
+    """
+    Modifies the shader code based on the user's prompt.
+    This is just a placeholder for the actual modification logic.
+    """
+    results = query_chroma(user_prompt)
+    final_prompt = build_prompt(user_prompt, results, shader_code)
+    response = google_model_client.models.generate_content(model=GOOGLE_GENAI_MODEL, contents=final_prompt)
+    return response.text.strip()
+
+
 # --------------------
 # FastAPI Application
 # --------------------
@@ -177,6 +191,32 @@ def generate_shader_endpoint(request: PromptRequest):
     Returns a JSON object with the generated shader code.
     """
     shader_code = generate_shader(request.prompt)
+
+    # remove any extraneous ```glsl or ``` markers
+    shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
+
+    # remove lines with "#version" in it
+    shader_code = "\n".join(line for line in shader_code.splitlines() if "#version" not in line)
+
+    return {"shader": shader_code}
+
+
+class ModifyShaderRequest(BaseModel):
+    prompt: str
+    code: str
+
+
+@app.post("/modify_shader")
+def modify_shader_endpoint(request: ModifyShaderRequest):
+    """
+    POST a JSON body like:
+    {
+      "prompt": "Modify the shader to add a moving light source"
+      "code": "void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }"
+    }
+    Returns a JSON object with the modified shader code.
+    """
+    shader_code = modify_shader(request.prompt, request.code)
 
     # remove any extraneous ```glsl or ``` markers
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()

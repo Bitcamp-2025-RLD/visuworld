@@ -5,7 +5,6 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 import { toast } from "sonner";
 
-// Example loading messages
 const LOADING_MESSAGES = [
     "Tracing all the rays...",
     "Working hard on the raymarching...",
@@ -16,10 +15,17 @@ const LOADING_MESSAGES = [
 
 interface DictaphoneProps {
     generateShader: (prompt: string) => void;
+    modifyShader: (prompt: string) => void;
+    resetShader: () => void;
     shaderLoading: boolean;
 }
 
-const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
+const Dictaphone = ({
+    generateShader,
+    modifyShader,
+    resetShader,
+    shaderLoading,
+}: DictaphoneProps) => {
     const {
         transcript,
         listening,
@@ -27,14 +33,25 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
         browserSupportsSpeechRecognition,
     } = useSpeechRecognition();
 
-    const [filteredTranscript, setFilteredTranscript] = useState("");
+    // Tracks whether we have started capturing prompt text
     const [isTranscribing, setIsTranscribing] = useState(false);
-    const lastTranscriptLength = useRef(0);
+
+    // The partial transcript from the moment we detect "visualize" or "modify"
+    const [filteredTranscript, setFilteredTranscript] = useState("");
+
+    // The "active" command we are processing
+    const [activeCommand, setActiveCommand] = useState<
+        "visualize" | "modify" | null
+    >(null);
+
+    // Store the character index in `transcript` where the command begins
+    // so we can always slice from there
+    const commandStartIndex = useRef<number | null>(null);
+
     const [hasMounted, setHasMounted] = useState(false);
 
-    // Index of the message currently displayed while loading
+    // For rotating loading messages
     const [messageIndex, setMessageIndex] = useState(0);
-    // A reference to the interval so we can clear it
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -42,38 +59,30 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
     }, []);
 
     /**
-     * LOADING MESSAGES ANIMATION:
-     * If shaderLoading is true, cycle through LOADING_MESSAGES every 1 second.
-     * If false, clear the interval.
+     * Show rotating LOADING_MESSAGES every 2s if shaderLoading = true.
+     * Clear when done.
      */
     useEffect(() => {
         if (shaderLoading) {
-            // Reset to first message
             setMessageIndex(0);
-
-            // Cycle messages every 1 second
             intervalRef.current = setInterval(() => {
                 setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
             }, 2000);
         } else {
-            // Loading finished, clear interval
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-
-            // Optionally show a toast if you like
             toast.success("VisuWorld generated successfully!");
         }
-
-        // Cleanup when unmount or changes
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [shaderLoading]);
 
     /**
-     * STOP/RESUME SPEECH RECOGNITION WHEN LOADING
+     * Stop speech recognition while loading. Resume otherwise.
+     * Reset any partial states if we get cut off by a new load.
      */
     useEffect(() => {
         if (!browserSupportsSpeechRecognition) return;
@@ -82,67 +91,96 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
             SpeechRecognition.stopListening();
             setIsTranscribing(false);
             setFilteredTranscript("");
+            setActiveCommand(null);
+            commandStartIndex.current = null;
             resetTranscript();
         } else {
-            // Resume listening
             SpeechRecognition.startListening({ continuous: true });
         }
-    }, [shaderLoading, browserSupportsSpeechRecognition]);
+    }, [shaderLoading, browserSupportsSpeechRecognition, resetTranscript]);
 
     /**
-     * INACTIVITY LOGIC:
-     * If no new words for 2s, finalize the prompt.
+     * MAIN LOGIC:
+     * - Always watch the `transcript` for words "visualize", "modify", or "reset".
+     * - If we detect "reset", call resetShader immediately.
+     * - If we detect "visualize" or "modify", store where in the transcript that command starts
+     *   and from then on, slice out the portion of the transcript after that command.
+     * - After 2s of no new additions to the transcript, finalize the prompt.
      */
     useEffect(() => {
         if (!listening || !transcript || shaderLoading) return;
 
-        const currentWords = transcript.trim().toLowerCase().split(/\s+/);
+        // Lowercase version for easy searching
+        const lower = transcript.toLowerCase();
 
-        if (!isTranscribing) {
-            const visualizeIndex = currentWords.lastIndexOf("visualize");
-            if (visualizeIndex !== -1) {
-                const afterVisualize = currentWords
-                    .slice(visualizeIndex)
-                    .join(" ");
-                setFilteredTranscript(afterVisualize);
-                setIsTranscribing(true);
-                lastTranscriptLength.current = currentWords.length;
-            }
-        } else {
-            const visualizeIndex = currentWords.lastIndexOf("visualize");
-            const afterVisualize = currentWords.slice(visualizeIndex).join(" ");
-            setFilteredTranscript(afterVisualize);
-
-            // Grab new words since last update
-            const newWords = currentWords.slice(lastTranscriptLength.current);
-            if (newWords.length > 0) {
-                setFilteredTranscript((prev) =>
-                    `${prev} ${newWords.join(" ")}`.trim()
-                );
-            }
-
-            lastTranscriptLength.current = currentWords.length;
+        // 1) If user says "reset", handle immediately.
+        const resetPos = lower.lastIndexOf("reset");
+        if (resetPos !== -1) {
+            resetShader();
+            setIsTranscribing(false);
+            setFilteredTranscript("");
+            setActiveCommand(null);
+            commandStartIndex.current = null;
+            resetTranscript();
+            return; // done
         }
 
+        // 2) Find last occurrences of "visualize" or "modify"
+        const visualizePos = lower.lastIndexOf("visualize");
+        const modifyPos = lower.lastIndexOf("modify");
+
+        // The furthest mention is the relevant command
+        const lastCommandPos = Math.max(visualizePos, modifyPos);
+
+        // If we haven't started transcribing and we find a new command
+        if (!isTranscribing && lastCommandPos !== -1) {
+            // Decide which command
+            const newCommand =
+                visualizePos > modifyPos ? "visualize" : "modify";
+            setActiveCommand(newCommand);
+
+            // Remember where in the transcript it started
+            commandStartIndex.current = lastCommandPos;
+            setIsTranscribing(true);
+        }
+        // If we *have* started transcribing, check if there's a new command
+        else if (isTranscribing && lastCommandPos !== -1) {
+            // If user changes mid-sentence
+            if (visualizePos > modifyPos && visualizePos !== -1) {
+                setActiveCommand("visualize");
+                commandStartIndex.current = visualizePos;
+            } else if (modifyPos > visualizePos && modifyPos !== -1) {
+                setActiveCommand("modify");
+                commandStartIndex.current = modifyPos;
+            }
+        }
+
+        // If isTranscribing is true and we have a commandStartIndex,
+        // always slice from that point to keep partial words updated
+        if (isTranscribing && commandStartIndex.current !== null) {
+            const partial = transcript.slice(commandStartIndex.current);
+            setFilteredTranscript(partial.trim());
+        }
+
+        // After 2s of no new text, finalize
+        const lastLength = transcript.length;
         const timeoutId = setTimeout(() => {
-            if (
-                currentWords.length === lastTranscriptLength.current &&
-                filteredTranscript
-            ) {
-                const lastVisualizeIndex = filteredTranscript
-                    .toLowerCase()
-                    .lastIndexOf("visualize");
-                const finalTranscript =
-                    lastVisualizeIndex !== -1
-                        ? filteredTranscript.slice(lastVisualizeIndex)
-                        : filteredTranscript;
+            // If the transcript hasn't changed in 2s and we have something in filteredTranscript
+            if (transcript.length === lastLength && filteredTranscript) {
+                console.log("Filtered Transcript (Final):", filteredTranscript);
 
-                console.log("Filtered Transcript (Final):", finalTranscript);
+                // Decide which function to call
+                if (activeCommand === "visualize") {
+                    generateShader(filteredTranscript);
+                } else if (activeCommand === "modify") {
+                    modifyShader(filteredTranscript);
+                }
 
+                // Reset
                 setFilteredTranscript("");
                 setIsTranscribing(false);
-                lastTranscriptLength.current = 0;
-                generateShader(finalTranscript);
+                setActiveCommand(null);
+                commandStartIndex.current = null;
                 resetTranscript();
             }
         }, 2000);
@@ -151,11 +189,14 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
     }, [
         transcript,
         listening,
-        filteredTranscript,
-        isTranscribing,
-        generateShader,
-        resetTranscript,
         shaderLoading,
+        isTranscribing,
+        filteredTranscript,
+        activeCommand,
+        generateShader,
+        modifyShader,
+        resetShader,
+        resetTranscript,
     ]);
 
     if (!hasMounted) return null;
@@ -164,7 +205,7 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
         return <span>Browser doesn't support speech recognition.</span>;
     }
 
-    // Are we loading? If so, show the fancy spinner + rotating text.
+    // If loading, show the spinner + rotating text
     const showLoading = shaderLoading;
 
     return (
@@ -189,13 +230,11 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
                 </p>
             </div>
 
-            {/* Bottom overlay: either the transcript or a fancy spinner + rotating messages */}
+            {/* Bottom overlay: transcript or spinner */}
             <div className="absolute bottom-4 left-4 right-4">
                 {showLoading ? (
                     <div className="flex flex-col gap-2 items-center">
-                        {/* Spinning ring */}
                         <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        {/* Animated text cycling every 1 second */}
                         <h2 className="text-lg font-semibold text-slate-200 animate-pulse">
                             {LOADING_MESSAGES[messageIndex]}
                         </h2>
@@ -208,8 +247,8 @@ const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
                                 : "🎙️ Listening for a command..."}
                         </div>
                         <div className="text-sm text-slate-400 mt-2 -mb-2">
-                            (Try saying "visualize" to start, "modify" to change
-                            your VisuWorld, or "reset" to clear it)
+                            (Say "visualize" to create a new VisuWorld, "modify"
+                            to adjust it, or "reset" to clear it.)
                         </div>
                     </>
                 )}

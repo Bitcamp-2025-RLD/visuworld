@@ -1,3 +1,7 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 from typing import Dict, Optional
 import logging
 from chromadb.api.client import Client as ClientCreator

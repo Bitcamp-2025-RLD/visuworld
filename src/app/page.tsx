@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ShaderView from "./components/shaderview";
@@ -54,11 +55,44 @@ function Page() {
         await new Promise((resolve) => setTimeout(resolve, 500));
     };
 
+    const modifyShader = async (prompt: string) => {
+        setShaderLoading(true);
+        const res = await fetch(server + "/modify_shader", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prompt: prompt, code: frag }),
+        });
+        const data = await res.json();
+        setFrag(data.shader);
+        setPrompt(prompt);
+        setShaderLoading(false);
+    };
+
+    const resetShader = async () => {
+        // pull the frag from public/shader.frag
+        const file = await fetch("/shader.frag");
+        const shaderCode = await file.text();
+        setFrag(shaderCode);
+        setPrompt("");
+        setShaderLoading(false);
+    };
+
     return (
         <div className="h-screen overflow-hidden w-screen flex flex-col bg-gray-600 text-gray-900">
             {/* Header */}
             <header className=" bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
-                <h1 className="text-2xl font-bold">🧪 VisuWorld</h1>
+                <div className="flex flex-row gap-1 items-center justify-center">
+                    <Image
+                        src="/logo.png"
+                        alt="VisuWorld Logo"
+                        width={200}
+                        height={200}
+                        className="h-14 w-auto"
+                    />
+                    <div className="text-2xl font-bold">VisuWorld</div>
+                </div>
                 <Button
                     onClick={() => setFullScreen(!fullScreen)}
                     size={"lg"}
@@ -77,6 +111,8 @@ function Page() {
                 <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900">
                     <Dictaphone
                         generateShader={generateShader}
+                        modifyShader={modifyShader}
+                        resetShader={resetShader}
                         shaderLoading={shaderLoading}
                     ></Dictaphone>
                 </div>
