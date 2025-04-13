@@ -6,3 +6,4 @@ google-generativeai
 google-genai
 fastapi
 pydantic
+pymongo
