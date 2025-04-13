@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List
 
 import tiktoken
+from bson import ObjectId
 from chromadb import PersistentClient
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -39,7 +40,7 @@ GOOGLE_GENAI_MODEL = "gemini-2.0-flash"
 # ----- NEW: MongoDB client & 'shaders' collection -----
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 mongo_client = MongoClient(MONGO_URL)
-db = mongo_client["mydatabase"]
+db = mongo_client["visuworld"]
 mongo_shaders_col = db["shaders"]
 
 
@@ -261,14 +262,33 @@ def save_shader(req: SaveShaderRequest):
 
 
 @app.get("/retrieve_shaders")
-def retrieve_shaders():
+def retrieve_shaders(page: int = 1):
     """
     Returns all shaders from MongoDB.
+    Paginated with 6 per page
     """
-    results = []
-    for doc in mongo_shaders_col.find({}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1}):
+    print(f"Retrieving shaders for page: {page}")
+    paginated_results = []
+    for doc in mongo_shaders_col.find({}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1}).skip((page - 1) * 6).limit(6):
         # Convert ObjectId to string
         doc["_id"] = str(doc["_id"])
-        results.append(doc)
+        paginated_results.append(doc)
+    print(f"Paginated results length: for page {page}: {len(paginated_results)}")
 
-    return {"shaders": results}
+    return {"shaders": paginated_results}
+
+
+@app.get("/retrieve_shader")
+def retrieve_shader(shader_id: str):
+    """
+    Returns one shaders from MongoDB.
+    """
+    print(f"Retrieving shader with ID: {shader_id}")
+    result = mongo_shaders_col.find_one({"_id": ObjectId(shader_id)}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1})
+
+    if result is None:
+        return {"error": "Shader not found"}
+
+    # Convert ObjectId to string
+    result["_id"] = str(result["_id"])
+    return result
