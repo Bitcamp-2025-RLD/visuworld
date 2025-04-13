@@ -1,4 +1,5 @@
 "use client";
+import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
 import { useEffect, useState } from "react";
 import ShaderView from "./components/shaderview";
@@ -36,12 +37,12 @@ function Page() {
                     !fullScreen && "p-4"
                 }`}
             >
-                <div className="bg-black h-full w-full rounded-2xl text-white p-2">
+                <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900">
                     <Dictaphone></Dictaphone>
                 </div>
                 {/* Editor */}
-                <div className="bg-white shadow-md rounded-2xl overflow-hidden flex flex-col row-start-2 row-span-2">
-                    <div className="bg-gray-800 text-white px-4 py-2 font-mono text-sm rounded-t-2xl">
+                <div className="bg-white border-2 border-gray-900 shadow-md rounded-2xl overflow-hidden flex flex-col row-start-2 row-span-2">
+                    <div className="bg-gray-800 text-white px-4 py-2 font-mono text-sm rounded-t-xl">
                         Fragment shader
                     </div>
                     <div className="overflow-auto">
@@ -50,6 +51,16 @@ function Page() {
                             height="100%"
                             theme={oneDark}
                             onChange={(value) => setFrag(value)}
+                            extensions={[loadLanguage("c")!]}
+                            basicSetup={{
+                                syntaxHighlighting: true,
+                                closeBrackets: true,
+                                highlightActiveLine: true,
+                                lineNumbers: true,
+                                history: false,
+                                highlightActiveLineGutter: true,
+                                autocompletion: false,
+                            }}
                         />
                     </div>
                 </div>
@@ -59,7 +70,7 @@ function Page() {
                             fullScreen
                                 ? "absolute w-screen h-[90vh]"
                                 : "rounded-2xl"
-                        } w-full bg-black  overflow-hidden shadow-md row-span-3`}
+                        } w-full bg-black  overflow-hidden shadow-md row-span-3 border-2 border-gray-900`}
                     >
                         <ShaderView fragShader={frag} vertShader="" />
                     </div>
