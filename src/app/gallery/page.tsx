@@ -123,9 +123,9 @@ export default function Gallery() {
                         >
                             <div className="overflow-hidden text-gray-200 italic text-nowrap">
                                 "
-                                {shader.prompt.length > 40
+                                {shader.prompt.length > 25
                                     ? shader.prompt.charAt(0).toUpperCase() +
-                                      shader.prompt.slice(1, 40) +
+                                      shader.prompt.slice(1, 25) +
                                       "..."
                                     : shader.prompt.charAt(0).toUpperCase() +
                                       shader.prompt.slice(1)}

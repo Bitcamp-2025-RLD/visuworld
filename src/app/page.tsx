@@ -123,14 +123,14 @@ function Page() {
                     <Button
                         onClick={() => router.push("/gallery")}
                         size={"lg"}
-                        className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
+                        className=" transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg text-white"
                     >
                         Gallery
                     </Button>
                     <Button
                         onClick={() => setFullScreen(!fullScreen)}
                         size={"lg"}
-                        className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
+                        className=" transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg  text-white"
                     >
                         {fullScreen ? "Minimize" : "Fullscreen"}
                     </Button>
