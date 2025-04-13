@@ -71,7 +71,10 @@ const Dictaphone = () => {
                 const lastVisualizeIndex = filteredTranscript
                     .toLowerCase()
                     .lastIndexOf("visualize");
-                const finalTranscript = filteredTranscript;
+                const finalTranscript =
+                    lastVisualizeIndex !== -1
+                        ? filteredTranscript.slice(lastVisualizeIndex)
+                        : filteredTranscript;
                 console.log("Filtered Transcript (Final):", finalTranscript);
                 setFilteredTranscript("");
                 setIsTranscribing(false);
