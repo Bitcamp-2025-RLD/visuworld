@@ -73,7 +73,7 @@ const Dictaphone = ({
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-            toast.success("VisuWorld generated successfully!");
+            toast.success("VisuWorld loaded successfully!");
         }
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
