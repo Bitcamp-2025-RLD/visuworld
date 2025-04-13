@@ -8,6 +8,7 @@ import tiktoken
 from chromadb import PersistentClient
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from openai import OpenAI
 from pydantic import BaseModel
@@ -32,7 +33,8 @@ collection = chroma.get_or_create_collection("shaders")
 
 # Setup Google GenAI Client
 google_model_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-GOOGLE_GENAI_MODEL = "gemini-2.5-pro-exp-03-25"
+# GOOGLE_GENAI_MODEL = "gemini-2.5-pro-exp-03-25"
+GOOGLE_GENAI_MODEL = "gemini-2.0-flash"
 
 # ----- NEW: MongoDB client & 'shaders' collection -----
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
@@ -85,6 +87,8 @@ Please write shaders targeting WebGL
 Do NOT write #version directives
 
 You can use iTime, iResolution, for your shaders
+When you use iResolution you must declare it as a uniform vec2
+When you use iTime you must declare it as a uniform float
 
 Make a main function with no parameters, and it must have its end result go to gl_FragColor
 
@@ -149,6 +153,14 @@ def generate_shader(user_prompt: str) -> str:
 # FastAPI Application
 # --------------------
 app = FastAPI(title="Shader Generation API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class PromptRequest(BaseModel):
