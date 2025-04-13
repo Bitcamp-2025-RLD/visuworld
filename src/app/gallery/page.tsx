@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
+import Link from "next/link";
 import { redirect, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ShaderView from "../components/shaderview";
@@ -58,14 +59,18 @@ export default function Gallery() {
         <div className="flex flex-col justify-center items-center h-screen w-screen bg-gray-600">
             <header className=" bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between w-full">
                 <div className="flex flex-row gap-1 items-center justify-center">
-                    <Image
-                        src="/logo.png"
-                        alt="VisuWorld Logo"
-                        width={200}
-                        height={200}
-                        className="h-14 w-auto"
-                    />
-                    <div className="text-2xl font-bold">VisuWorld</div>
+                    <Link href={"/"}>
+                        <div className="flex flex-row gap-1 items-center justify-center">
+                            <Image
+                                src="/logo.png"
+                                alt="VisuWorld Logo"
+                                width={200}
+                                height={200}
+                                className="h-14 w-auto"
+                            />
+                            <div className="text-2xl font-bold">VisuWorld</div>
+                        </div>
+                    </Link>
                 </div>
                 <div>
                     <Button
@@ -99,13 +104,13 @@ export default function Gallery() {
                         key={index}
                         className="bg-gray-800 rounded-lg shadow-md p-2"
                     >
-                        <CardTitle className="m-2 font-mono text-xl font-bold text-white">
+                        <CardTitle className="mt-2 mx-2 font-mono text-xl font-bold text-white">
                             {shader.description.replace(
                                 /\b\w/g,
                                 (char: string) => char.toUpperCase()
                             )}
                         </CardTitle>
-                        <CardContent className="w-full rounded-xl min-h-[22.5vh]">
+                        <CardContent className="w-full rounded-xl min-h-[18vh]">
                             <ShaderView
                                 key={index}
                                 fragShader={shader.code}

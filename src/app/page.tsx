@@ -14,6 +14,7 @@ import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -103,16 +104,18 @@ function Page() {
         <div className="h-screen overflow-hidden w-screen flex flex-col bg-gray-600 text-gray-900">
             {/* Header */}
             <header className="bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
-                <div className="flex flex-row gap-1 items-center justify-center">
-                    <Image
-                        src="/logo.png"
-                        alt="VisuWorld Logo"
-                        width={200}
-                        height={200}
-                        className="h-14 w-auto"
-                    />
-                    <div className="text-2xl font-bold">VisuWorld</div>
-                </div>
+                <Link href={"/"}>
+                    <div className="flex flex-row gap-1 items-center justify-center">
+                        <Image
+                            src="/logo.png"
+                            alt="VisuWorld Logo"
+                            width={200}
+                            height={200}
+                            className="h-14 w-auto"
+                        />
+                        <div className="text-2xl font-bold">VisuWorld</div>
+                    </div>
+                </Link>
                 <div className="flex gap-4 items-center justify-center">
                     <Button
                         onClick={() => router.push("/gallery")}
@@ -168,7 +171,7 @@ function Page() {
                                         onClick={() =>
                                             navigator.clipboard.writeText(frag)
                                         }
-                                        className="bg-black text-white px-4 py-2 text-xl rounded-lg"
+                                        className=" text-white px-4 py-2 text-xl rounded-lg"
                                     >
                                         Save
                                     </Button>
@@ -230,7 +233,7 @@ function Page() {
                                                     }
                                                 }}
                                                 disabled={prompt === ""}
-                                                className="bg-black text-white px-4 w-full py-2 rounded-lg text-xl"
+                                                className=" text-white px-4 w-full py-2 rounded-lg text-xl"
                                             >
                                                 {saveLoading ? (
                                                     <Loader2 className="animate-spin h-4 w-4" />
@@ -279,7 +282,7 @@ function Page() {
                             fullScreen
                                 ? "absolute w-screen h-[90vh]"
                                 : "rounded-2xl"
-                        } w-full bg-black overflow-hidden shadow-md row-span-5 col-start-2 col-span-1 border-2 border-gray-900`}
+                        } w-full  overflow-hidden shadow-md row-span-5 col-start-2 col-span-1 border-2 border-gray-900`}
                     >
                         <ShaderView fragShader={frag} vertShader="" />
                     </div>
