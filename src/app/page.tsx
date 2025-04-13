@@ -10,6 +10,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
 import { Loader2 } from "lucide-react";
@@ -33,6 +35,7 @@ function Page() {
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
     const router = useRouter();
+    const [isPro, setIsPro] = useState<boolean>(false);
 
     useEffect(() => {
         async function readShaders() {
@@ -68,7 +71,7 @@ function Page() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prompt }),
+            body: JSON.stringify({ prompt, isPro }),
         });
         setPrompt(prompt);
         const data = await res.json();
@@ -84,7 +87,7 @@ function Page() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prompt, code: frag }),
+            body: JSON.stringify({ prompt, code: frag, isPro }),
         });
         const data = await res.json();
         setFrag(data.shader);
@@ -153,14 +156,28 @@ function Page() {
                 {/* Editor - Bottom of Left Column */}
                 <div className="bg-gray-800 border-2 border-gray-900 shadow-md rounded-2xl overflow-hidden flex flex-col row-span-3 row-start-3 col-span-1">
                     <div className="flex justify-between items-center">
-                        <div className="bg-gray-800 text-white h-full px-4 py-2 font-mono text-sm rounded-t-xl flex items-center justify-center">
+                        <div className="bg-gray-800 text-white h-full px-4 py-2 gap-4 font-mono text-sm rounded-t-xl flex items-center justify-center">
                             <p className="text-xl">
                                 <span className="text-blue-400 font-bold">
                                     Fragment Shader (WebGL)
                                 </span>
                             </p>
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id="airplane-mode"
+                                    onCheckedChange={(checked) =>
+                                        setIsPro(checked)
+                                    }
+                                />
+                                <Label
+                                    htmlFor="airplane-mode"
+                                    className="text-xl"
+                                >
+                                    2.5 Pro
+                                </Label>
+                            </div>
                         </div>
-                        <div className="bg-gray-800 text-white px-4 py-2 font-mono text-sm rounded-t-xl items-center justify-center">
+                        <div className="bg-gray-800 text-white px-4 flex gap-4 py-2 font-mono text-sm rounded-t-xl items-center justify-center">
                             <Dialog
                                 open={dialogOpen}
                                 onOpenChange={setDialogOpen}

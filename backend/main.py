@@ -34,8 +34,8 @@ collection = chroma.get_or_create_collection("shaders")
 
 # Setup Google GenAI Client
 google_model_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-# GOOGLE_GENAI_MODEL = "gemini-2.5-pro-exp-03-25"
-GOOGLE_GENAI_MODEL = "gemini-2.0-flash"
+GOOGLE_FLASH_MODEL = "gemini-2.0-flash"
+GOOGLE_PRO_MODEL = "gemini-2.5-pro-exp-03-25"
 
 # ----- NEW: MongoDB client & 'shaders' collection -----
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
@@ -141,7 +141,7 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
     return context
 
 
-def generate_shader(user_prompt: str) -> str:
+def generate_shader(user_prompt: str, isPro: bool) -> str:
     """
     Queries ChromaDB, builds a final prompt for Google GenAI, and returns
     the generated shader code.
@@ -149,18 +149,21 @@ def generate_shader(user_prompt: str) -> str:
     results = query_chroma(user_prompt)
     final_prompt = build_prompt(user_prompt, results)
 
-    response = google_model_client.models.generate_content(model=GOOGLE_GENAI_MODEL, contents=final_prompt)
+    GOOGLE_MODEL = GOOGLE_PRO_MODEL if isPro else GOOGLE_FLASH_MODEL
+    response = google_model_client.models.generate_content(model=GOOGLE_MODEL, contents=final_prompt)
     return response.text.strip()
 
 
-def modify_shader(user_prompt: str, shader_code: str) -> str:
+def modify_shader(user_prompt: str, shader_code: str, isPro: bool) -> str:
     """
     Modifies the shader code based on the user's prompt.
     This is just a placeholder for the actual modification logic.
     """
     results = query_chroma(user_prompt)
     final_prompt = build_prompt(user_prompt, results, shader_code)
-    response = google_model_client.models.generate_content(model=GOOGLE_GENAI_MODEL, contents=final_prompt)
+
+    GOOGLE_MODEL = GOOGLE_PRO_MODEL if isPro else GOOGLE_FLASH_MODEL
+    response = google_model_client.models.generate_content(model=GOOGLE_MODEL, contents=final_prompt)
     return response.text.strip()
 
 
@@ -180,6 +183,7 @@ app.add_middleware(
 
 class PromptRequest(BaseModel):
     prompt: str
+    isPro: bool
 
 
 @app.post("/generate_shader")
@@ -191,7 +195,7 @@ def generate_shader_endpoint(request: PromptRequest):
     }
     Returns a JSON object with the generated shader code.
     """
-    shader_code = generate_shader(request.prompt)
+    shader_code = generate_shader(request.prompt, request.isPro)
 
     # remove any extraneous ```glsl or ``` markers
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
@@ -205,6 +209,7 @@ def generate_shader_endpoint(request: PromptRequest):
 class ModifyShaderRequest(BaseModel):
     prompt: str
     code: str
+    isPro: bool
 
 
 @app.post("/modify_shader")
@@ -217,7 +222,7 @@ def modify_shader_endpoint(request: ModifyShaderRequest):
     }
     Returns a JSON object with the modified shader code.
     """
-    shader_code = modify_shader(request.prompt, request.code)
+    shader_code = modify_shader(request.prompt, request.code, request.isPro)
 
     # remove any extraneous ```glsl or ``` markers
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
