@@ -6,7 +6,7 @@ interface ShaderProps {
 }
 export default function ShaderView({ vertShader, fragShader }: ShaderProps) {
     return (
-        <div className="w-full h-full">
+        <div className="w-full h-full rounded-xl">
             <Shader vertShader={vertShader} fragShader={fragShader}></Shader>
         </div>
     );

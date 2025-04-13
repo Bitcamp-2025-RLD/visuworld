@@ -14,6 +14,7 @@ import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ShaderView from "./components/shaderview";
@@ -28,6 +29,9 @@ function Page() {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [saveLoading, setSaveLoading] = useState<boolean>(false);
     const [shaderLoading, setShaderLoading] = useState<boolean>(false);
+    const searchParams = useSearchParams();
+    const id = searchParams.get("id");
+    const router = useRouter();
 
     useEffect(() => {
         async function readShaders() {
@@ -36,6 +40,26 @@ function Page() {
             setFrag(shaderCode);
         }
         readShaders();
+
+        async function getShader() {
+            const id = searchParams.get("id");
+            console.log("[INFO] Fetching", id);
+            if (id != null) {
+                const res = await fetch(
+                    server + "/retrieve_shader?shader_id=" + id,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+                const data = await res.json();
+                console.log(data);
+                setFrag(data.code);
+            }
+        }
+        getShader();
     }, []);
 
     const generateShader = async (prompt: string) => {
@@ -93,13 +117,24 @@ function Page() {
                     />
                     <div className="text-2xl font-bold">VisuWorld</div>
                 </div>
-                <Button
-                    onClick={() => setFullScreen(!fullScreen)}
-                    size={"lg"}
-                    className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
-                >
-                    {fullScreen ? "Minimize" : "Fullscreen"}
-                </Button>
+                <div className="flex gap-4 items-center justify-center">
+                    <Button
+                        onClick={() => {
+                            router.push("/gallery");
+                        }}
+                        size={"lg"}
+                        className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
+                    >
+                        Gallery
+                    </Button>
+                    <Button
+                        onClick={() => setFullScreen(!fullScreen)}
+                        size={"lg"}
+                        className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
+                    >
+                        {fullScreen ? "Minimize" : "Fullscreen"}
+                    </Button>
+                </div>
             </header>
 
             {/* Grid Layout */}
