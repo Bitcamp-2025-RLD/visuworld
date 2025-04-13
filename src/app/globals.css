@@ -120,3 +120,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #1f2937; /* thumb color and track color */
+}
+
+/* WebKit browsers */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #3b82f6;
+  border-radius: 9999px;
+  border: 2px solid #1f2937;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #3b82f6cc;
+}

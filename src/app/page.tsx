@@ -26,6 +26,7 @@ function Page() {
     const [prompt, setPrompt] = useState<string>("");
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [saveLoading, setSaveLoading] = useState<boolean>(false);
+    const [shaderLoading, setShaderLoading] = useState<boolean>(false);
 
     useEffect(() => {
         async function readShaders() {
@@ -37,6 +38,7 @@ function Page() {
     }, []);
 
     const generateShader = async (prompt: string) => {
+        setShaderLoading(true);
         const res = await fetch(server + "/generate_shader", {
             method: "POST",
             headers: {
@@ -46,21 +48,23 @@ function Page() {
         });
         setPrompt(prompt);
         const data = await res.json();
-        console.log(data);
         setFrag(data.shader);
+        setShaderLoading(false);
+        // wait for 0.5 seconds
+        await new Promise((resolve) => setTimeout(resolve, 500));
     };
 
     return (
         <div className="h-screen overflow-hidden w-screen flex flex-col bg-gray-600 text-gray-900">
             {/* Header */}
             <header className=" bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
-                <h1 className="text-xl font-bold">🧪 VisuWorld</h1>
+                <h1 className="text-2xl font-bold">🧪 VisuWorld</h1>
                 <Button
                     onClick={() => setFullScreen(!fullScreen)}
                     size={"lg"}
                     className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
                 >
-                    {fullScreen ? "Fullscreen" : "Minimized"}
+                    {fullScreen ? "Minimize" : "Fullscreen"}
                 </Button>
             </header>
 
@@ -71,13 +75,21 @@ function Page() {
                 }`}
             >
                 <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900">
-                    <Dictaphone generateShader={generateShader}></Dictaphone>
+                    <Dictaphone
+                        generateShader={generateShader}
+                        shaderLoading={shaderLoading}
+                    ></Dictaphone>
                 </div>
                 {/* Editor */}
                 <div className="bg-gray-800 border-2 border-gray-900 shadow-md rounded-2xl overflow-hidden flex flex-col row-start-2 row-span-2">
                     <div className="flex justify-between items-center">
                         <div className="bg-gray-800 text-white h-full px-4 py-2 font-mono text-sm rounded-t-xl flex items-center justify-center">
-                            <p className="text-xl">Fragment Shader</p>
+                            <p className="text-xl">
+                                {" "}
+                                <span className="text-blue-400 font-bold">
+                                    Fragment Shader (WebGL)
+                                </span>
+                            </p>
                         </div>
                         <div className="bg-gray-800 text-white px-4 py-2 font-mono text-sm rounded-t-xl items-center justify-center">
                             <Dialog
@@ -101,14 +113,14 @@ function Page() {
                                             Save your VisuWorld!
                                         </DialogTitle>
                                         <DialogDescription className="text-white">
-                                            Give your description a name and
+                                            Give your creation a name and
                                             publish to the VisuWorld public
                                             gallery!
                                         </DialogDescription>
                                     </DialogHeader>
                                     <Input
                                         className="bg-gray-900 text-white"
-                                        placeholder="Enter a name for your masterpiece"
+                                        placeholder="Enter a name for your masterpiece..."
                                         onChange={(e) => {
                                             setDescription(e.target.value);
                                         }}

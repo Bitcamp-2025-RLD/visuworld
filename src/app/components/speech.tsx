@@ -3,45 +3,99 @@ import { useEffect, useRef, useState } from "react";
 import SpeechRecognition, {
     useSpeechRecognition,
 } from "react-speech-recognition";
+import { toast } from "sonner";
+
+// Example loading messages
+const LOADING_MESSAGES = [
+    "Tracing all the rays...",
+    "Working hard on the raymarching...",
+    "Showing your world some love...",
+    "Sculpting fractals and shapes...",
+    "Infusing magic into the pixels...",
+];
 
 interface DictaphoneProps {
     generateShader: (prompt: string) => void;
+    shaderLoading: boolean;
 }
-const Dictaphone = ({ generateShader }: DictaphoneProps) => {
+
+const Dictaphone = ({ generateShader, shaderLoading }: DictaphoneProps) => {
     const {
         transcript,
         listening,
         resetTranscript,
         browserSupportsSpeechRecognition,
     } = useSpeechRecognition();
+
     const [filteredTranscript, setFilteredTranscript] = useState("");
     const [isTranscribing, setIsTranscribing] = useState(false);
     const lastTranscriptLength = useRef(0);
     const [hasMounted, setHasMounted] = useState(false);
-    const [pendingReset, setPendingReset] = useState(false);
+
+    // Index of the message currently displayed while loading
+    const [messageIndex, setMessageIndex] = useState(0);
+    // A reference to the interval so we can clear it
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         setHasMounted(true);
     }, []);
 
-    const customReset = () => {
-        generateShader(filteredTranscript);
-        resetTranscript();
-    };
-
+    /**
+     * LOADING MESSAGES ANIMATION:
+     * If shaderLoading is true, cycle through LOADING_MESSAGES every 1 second.
+     * If false, clear the interval.
+     */
     useEffect(() => {
-        if (!browserSupportsSpeechRecognition) {
-            console.error("Browser doesn't support speech recognition.");
-            return;
+        if (shaderLoading) {
+            // Reset to first message
+            setMessageIndex(0);
+
+            // Cycle messages every 1 second
+            intervalRef.current = setInterval(() => {
+                setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+            }, 2000);
+        } else {
+            // Loading finished, clear interval
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+
+            // Optionally show a toast if you like
+            toast.success("VisuWorld generated successfully!");
         }
 
-        SpeechRecognition.startListening({ continuous: true });
-    }, [browserSupportsSpeechRecognition]);
+        // Cleanup when unmount or changes
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, [shaderLoading]);
 
+    /**
+     * STOP/RESUME SPEECH RECOGNITION WHEN LOADING
+     */
     useEffect(() => {
-        if (!listening || !transcript) return;
+        if (!browserSupportsSpeechRecognition) return;
 
-        // Normalize transcript by trimming and splitting on spaces, and convert to lowercase
+        if (shaderLoading) {
+            SpeechRecognition.stopListening();
+            setIsTranscribing(false);
+            setFilteredTranscript("");
+            resetTranscript();
+        } else {
+            // Resume listening
+            SpeechRecognition.startListening({ continuous: true });
+        }
+    }, [shaderLoading, browserSupportsSpeechRecognition]);
+
+    /**
+     * INACTIVITY LOGIC:
+     * If no new words for 2s, finalize the prompt.
+     */
+    useEffect(() => {
+        if (!listening || !transcript || shaderLoading) return;
+
         const currentWords = transcript.trim().toLowerCase().split(/\s+/);
 
         if (!isTranscribing) {
@@ -55,27 +109,26 @@ const Dictaphone = ({ generateShader }: DictaphoneProps) => {
                 lastTranscriptLength.current = currentWords.length;
             }
         } else {
-            // only take after the last occurence of "visualize"
             const visualizeIndex = currentWords.lastIndexOf("visualize");
             const afterVisualize = currentWords.slice(visualizeIndex).join(" ");
             setFilteredTranscript(afterVisualize);
+
+            // Grab new words since last update
             const newWords = currentWords.slice(lastTranscriptLength.current);
             if (newWords.length > 0) {
-                // Append new words to the filtered transcript without truncating
                 setFilteredTranscript((prev) =>
                     `${prev} ${newWords.join(" ")}`.trim()
                 );
             }
+
             lastTranscriptLength.current = currentWords.length;
         }
 
-        // Set a short timeout for inactivity detection
         const timeoutId = setTimeout(() => {
             if (
                 currentWords.length === lastTranscriptLength.current &&
                 filteredTranscript
             ) {
-                // only grab text past the last occurence of "visualize"
                 const lastVisualizeIndex = filteredTranscript
                     .toLowerCase()
                     .lastIndexOf("visualize");
@@ -83,24 +136,26 @@ const Dictaphone = ({ generateShader }: DictaphoneProps) => {
                     lastVisualizeIndex !== -1
                         ? filteredTranscript.slice(lastVisualizeIndex)
                         : filteredTranscript;
+
                 console.log("Filtered Transcript (Final):", finalTranscript);
+
                 setFilteredTranscript("");
                 setIsTranscribing(false);
-                setPendingReset(false);
                 lastTranscriptLength.current = 0;
-
-                // Reset transcript after short delay
-                customReset();
+                generateShader(finalTranscript);
+                resetTranscript();
             }
         }, 2000);
 
-        return () => clearTimeout(timeoutId); // Cleanup timeout
+        return () => clearTimeout(timeoutId);
     }, [
         transcript,
         listening,
         filteredTranscript,
         isTranscribing,
-        customReset,
+        generateShader,
+        resetTranscript,
+        shaderLoading,
     ]);
 
     if (!hasMounted) return null;
@@ -109,8 +164,11 @@ const Dictaphone = ({ generateShader }: DictaphoneProps) => {
         return <span>Browser doesn't support speech recognition.</span>;
     }
 
+    // Are we loading? If so, show the fancy spinner + rotating text.
+    const showLoading = shaderLoading;
+
     return (
-        <div className="relative w-full h-full p-4 flex flex-col justify-start gap-4 text-white rounded-xl shadow-xl">
+        <div className="relative w-full h-full p-4 flex flex-col justify-start gap-4 text-white rounded-xl">
             <div className="space-y-2">
                 <h1 className="text-2xl font-extrabold tracking-tight">
                     Welcome to <span className="text-blue-400">VisuWorld</span>{" "}
@@ -129,19 +187,32 @@ const Dictaphone = ({ generateShader }: DictaphoneProps) => {
                     programming paradigms. Peer into the other side of the
                     screen, and let your words shape the world.
                 </p>
-                <div className="text-sm text-slate-400">
-                    (Try saying "visualize" to start, "modify" to change your
-                    VisuWorld, or "reset" to clear it)
-                </div>
             </div>
 
-            {/* Floating Transcript at Bottom */}
+            {/* Bottom overlay: either the transcript or a fancy spinner + rotating messages */}
             <div className="absolute bottom-4 left-4 right-4">
-                <div className="bg-slate-700/80 border border-slate-500 rounded-lg px-4 py-2 text-sm text-slate-100 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out">
-                    {filteredTranscript
-                        ? `🎨 ${filteredTranscript}`
-                        : "🎙️ Listening for a command..."}
-                </div>
+                {showLoading ? (
+                    <div className="flex flex-col gap-2 items-center">
+                        {/* Spinning ring */}
+                        <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        {/* Animated text cycling every 1 second */}
+                        <h2 className="text-lg font-semibold text-slate-200 animate-pulse">
+                            {LOADING_MESSAGES[messageIndex]}
+                        </h2>
+                    </div>
+                ) : (
+                    <>
+                        <div className="bg-slate-700/80 border border-slate-500 shadow rounded-lg px-4 py-2 text-sm text-slate-100 transition-all duration-300 ease-in-out">
+                            {filteredTranscript
+                                ? `🎨 ${filteredTranscript}`
+                                : "🎙️ Listening for a command..."}
+                        </div>
+                        <div className="text-sm text-slate-400 mt-2 -mb-2">
+                            (Try saying "visualize" to start, "modify" to change
+                            your VisuWorld, or "reset" to clear it)
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
