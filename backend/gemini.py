@@ -125,6 +125,8 @@ if __name__ == "__main__":
     # write to shader.frag regardless
     with open("shader.frag", "w") as f:
         f.write(cleaned_result)
+    # close the file
+    print("✅ Saved shader to shader.frag")
 
     choice = input("\n💾 Enter a name to save this shader (or 'Q' to skip): ").strip()
 

@@ -1,6 +1,7 @@
 # file: main.py
 
 import os
+from datetime import datetime
 from typing import List
 
 import tiktoken
@@ -11,9 +12,10 @@ from google import genai
 from openai import OpenAI
 from pydantic import BaseModel
 
-# --------------------
-# Load environment and initialize clients
-# --------------------
+# ----- NEW: Mongo Setup -----
+from pymongo import MongoClient
+
+# Load environment variables
 load_dotenv()
 
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
@@ -31,6 +33,12 @@ collection = chroma.get_or_create_collection("shaders")
 # Setup Google GenAI Client
 google_model_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 GOOGLE_GENAI_MODEL = "gemini-2.5-pro-exp-03-25"
+
+# ----- NEW: MongoDB client & 'shaders' collection -----
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+mongo_client = MongoClient(MONGO_URL)
+db = mongo_client["mydatabase"]
+mongo_shaders_col = db["shaders"]
 
 
 # --------------------
@@ -163,3 +171,41 @@ def generate_shader_endpoint(request: PromptRequest):
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
 
     return {"shader": shader_code}
+
+
+# ----- NEW: Data models for saving & retrieving from MongoDB -----
+class SaveShaderRequest(BaseModel):
+    prompt: str
+    code: str
+    description: str
+
+
+@app.post("/save_shader")
+def save_shader(req: SaveShaderRequest):
+    """
+    Insert the shader into MongoDB.
+    JSON body must have:
+      {
+        "prompt": "the user prompt",
+        "code": "the glsl code",
+        "description": "some descriptive text"
+      }
+    """
+    doc = {"prompt": req.prompt, "code": req.code, "description": req.description, "timestamp": datetime.utcnow()}
+    # Insert into MongoDB
+    result = mongo_shaders_col.insert_one(doc)
+    return {"message": "Shader saved successfully", "inserted_id": str(result.inserted_id)}
+
+
+@app.get("/retrieve_shaders")
+def retrieve_shaders():
+    """
+    Returns all shaders from MongoDB.
+    """
+    results = []
+    for doc in mongo_shaders_col.find({}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1}):
+        # Convert ObjectId to string
+        doc["_id"] = str(doc["_id"])
+        results.append(doc)
+
+    return {"shaders": results}
