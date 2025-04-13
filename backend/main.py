@@ -151,6 +151,7 @@ def generate_shader(user_prompt: str) -> str:
 # --------------------
 app = FastAPI(title="Shader Generation API", version="1.0.0")
 
+
 class PromptRequest(BaseModel):
     prompt: str
 
