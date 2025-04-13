@@ -50,6 +50,7 @@ const Dictaphone = () => {
             }
         } else {
             console.log(transcript);
+            setFilteredTranscript(transcript);
             const newWords = currentWords.slice(lastTranscriptLength.current);
             if (newWords.length > 0) {
                 // Append new words to the filtered transcript without truncating
@@ -66,7 +67,12 @@ const Dictaphone = () => {
                 currentWords.length === lastTranscriptLength.current &&
                 filteredTranscript
             ) {
-                console.log("Filtered Transcript (Final):", filteredTranscript);
+                // only grab text past the last occurence of "visualize"
+                const lastVisualizeIndex = filteredTranscript
+                    .toLowerCase()
+                    .lastIndexOf("visualize");
+                const finalTranscript = filteredTranscript;
+                console.log("Filtered Transcript (Final):", finalTranscript);
                 setFilteredTranscript("");
                 setIsTranscribing(false);
                 setPendingReset(false);
