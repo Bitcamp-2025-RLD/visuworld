@@ -9,6 +9,9 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+/backend/chroma_db/
+/backend/chroma_db/chroma.sqlite3
+chroma.sqlite3
 
 # testing
 /coverage

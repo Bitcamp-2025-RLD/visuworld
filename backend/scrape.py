@@ -95,7 +95,7 @@ shader_ids = get_all_shader_ids()
 print(f"✅ Got {len(shader_ids)} shader IDs")
 
 results = []
-for i, shader_id in enumerate(shader_ids[3003:6000]):  # Limit to 5000
+for i, shader_id in enumerate(shader_ids[3003:34000]):  # Limit to 5000
     data = get_shader_from_id(shader_id)
     if not data:
         continue
