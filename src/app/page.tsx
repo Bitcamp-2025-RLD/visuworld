@@ -43,7 +43,6 @@ function Page() {
 
         async function getShader() {
             const id = searchParams.get("id");
-            console.log("[INFO] Fetching", id);
             if (id != null) {
                 const res = await fetch(
                     server + "/retrieve_shader?shader_id=" + id,
@@ -55,7 +54,6 @@ function Page() {
                     }
                 );
                 const data = await res.json();
-                console.log(data);
                 setFrag(data.code);
             }
         }
@@ -69,13 +67,12 @@ function Page() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prompt: prompt }),
+            body: JSON.stringify({ prompt }),
         });
         setPrompt(prompt);
         const data = await res.json();
         setFrag(data.shader);
         setShaderLoading(false);
-        // wait for 0.5 seconds
         await new Promise((resolve) => setTimeout(resolve, 500));
     };
 
@@ -86,7 +83,7 @@ function Page() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prompt: prompt, code: frag }),
+            body: JSON.stringify({ prompt, code: frag }),
         });
         const data = await res.json();
         setFrag(data.shader);
@@ -95,7 +92,6 @@ function Page() {
     };
 
     const resetShader = async () => {
-        // pull the frag from public/shader.frag
         const file = await fetch("/shader.frag");
         const shaderCode = await file.text();
         setFrag(shaderCode);
@@ -106,7 +102,7 @@ function Page() {
     return (
         <div className="h-screen overflow-hidden w-screen flex flex-col bg-gray-600 text-gray-900">
             {/* Header */}
-            <header className=" bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
+            <header className="bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
                 <div className="flex flex-row gap-1 items-center justify-center">
                     <Image
                         src="/logo.png"
@@ -119,9 +115,7 @@ function Page() {
                 </div>
                 <div className="flex gap-4 items-center justify-center">
                     <Button
-                        onClick={() => {
-                            router.push("/gallery");
-                        }}
+                        onClick={() => router.push("/gallery")}
                         size={"lg"}
                         className="hover:bg-gray-700 transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg bg-gray-950 text-white"
                     >
@@ -139,24 +133,25 @@ function Page() {
 
             {/* Grid Layout */}
             <div
-                className={`h-[90vh] grid grid-cols-2 grid-rows-3 gap-4 ${
+                className={`h-[90vh] grid grid-cols-2 grid-rows-5 gap-4 ${
                     !fullScreen && "p-4"
                 }`}
             >
-                <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900">
+                {/* Dictaphone - Top of Left Column */}
+                <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900 row-span-2 col-span-1">
                     <Dictaphone
                         generateShader={generateShader}
                         modifyShader={modifyShader}
                         resetShader={resetShader}
                         shaderLoading={shaderLoading}
-                    ></Dictaphone>
+                    />
                 </div>
-                {/* Editor */}
-                <div className="bg-gray-800 border-2 border-gray-900 shadow-md rounded-2xl overflow-hidden flex flex-col row-start-2 row-span-2">
+
+                {/* Editor - Bottom of Left Column */}
+                <div className="bg-gray-800 border-2 border-gray-900 shadow-md rounded-2xl overflow-hidden flex flex-col row-span-3 row-start-3 col-span-1">
                     <div className="flex justify-between items-center">
                         <div className="bg-gray-800 text-white h-full px-4 py-2 font-mono text-sm rounded-t-xl flex items-center justify-center">
                             <p className="text-xl">
-                                {" "}
                                 <span className="text-blue-400 font-bold">
                                     Fragment Shader (WebGL)
                                 </span>
@@ -170,9 +165,9 @@ function Page() {
                                 <DialogTrigger asChild>
                                     <Button
                                         size={"lg"}
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(frag);
-                                        }}
+                                        onClick={() =>
+                                            navigator.clipboard.writeText(frag)
+                                        }
                                         className="bg-black text-white px-4 py-2 text-xl rounded-lg"
                                     >
                                         Save
@@ -192,9 +187,9 @@ function Page() {
                                     <Input
                                         className="bg-gray-900 text-white"
                                         placeholder="Enter a name for your masterpiece..."
-                                        onChange={(e) => {
-                                            setDescription(e.target.value);
-                                        }}
+                                        onChange={(e) =>
+                                            setDescription(e.target.value)
+                                        }
                                         disabled={prompt === ""}
                                     />
                                     <DialogFooter>
@@ -214,26 +209,23 @@ function Page() {
                                                                 },
                                                                 body: JSON.stringify(
                                                                     {
-                                                                        description:
-                                                                            description,
+                                                                        description,
                                                                         code: frag,
-                                                                        prompt: prompt,
+                                                                        prompt,
                                                                     }
                                                                 ),
                                                             }
                                                         );
-                                                        const data =
-                                                            await res.json();
-                                                        console.log(data);
+                                                        await res.json();
                                                         setSaveLoading(false);
                                                         setDialogOpen(false);
                                                         toast.success(
-                                                            "VisuWorld successfully!"
+                                                            "VisuWorld saved successfully!"
                                                         );
                                                     } catch (error) {
                                                         setSaveLoading(false);
                                                         toast.error(
-                                                            `Error saving VisuWorld... Try again later.`
+                                                            "Error saving VisuWorld... Try again later."
                                                         );
                                                     }
                                                 }}
@@ -279,13 +271,15 @@ function Page() {
                         />
                     </div>
                 </div>
+
+                {/* ShaderView - Full Right Column */}
                 {frag !== "" && (
                     <div
                         className={`${
                             fullScreen
                                 ? "absolute w-screen h-[90vh]"
                                 : "rounded-2xl"
-                        } w-full bg-black  overflow-hidden shadow-md row-span-3 border-2 border-gray-900`}
+                        } w-full bg-black overflow-hidden shadow-md row-span-5 col-start-2 col-span-1 border-2 border-gray-900`}
                     >
                         <ShaderView fragShader={frag} vertShader="" />
                     </div>

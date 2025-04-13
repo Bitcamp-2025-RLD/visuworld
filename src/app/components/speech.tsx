@@ -211,7 +211,7 @@ const Dictaphone = ({
     return (
         <div className="relative w-full h-full p-4 flex flex-col justify-start gap-4 text-white rounded-xl">
             <div className="space-y-2">
-                <h1 className="text-2xl font-extrabold tracking-tight">
+                <h1 className="text-xl font-extrabold tracking-tight">
                     Welcome to <span className="text-blue-400">VisuWorld</span>{" "}
                     <span className="font-semibold">
                         {listening ? "🎙️" : "❌ (Mic Disabled)"}
@@ -246,7 +246,7 @@ const Dictaphone = ({
                                 ? `🎨 ${filteredTranscript}`
                                 : "🎙️ Listening for a command..."}
                         </div>
-                        <div className="text-sm text-slate-400 mt-2 -mb-2">
+                        <div className="text-[0.75rem] text-slate-400 mt-2 -mb-2">
                             (Say "visualize" to create a new VisuWorld, "modify"
                             to adjust it, or "reset" to clear it.)
                         </div>
