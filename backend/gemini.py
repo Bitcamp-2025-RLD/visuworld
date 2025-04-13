@@ -50,6 +50,7 @@ Code Snippet:{snippet}
 
     context += """[REQUIRED] Additional Program Information:
 Please write shaders targeting WebGL
+Do NOT write #version directives
 
 You can use iTime, iResolution, for your shaders
 

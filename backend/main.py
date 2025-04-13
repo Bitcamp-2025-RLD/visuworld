@@ -81,13 +81,12 @@ Code Snippet:{snippet}
 """
 
     context += """[REQUIRED] Additional Program Information:
-fragCoord is passed in as a vec2 from the vertex shader
-fragColor is passed out as a vec4 from the fargment shader
+Please write shaders targeting WebGL
+Do NOT write #version directives
 
-fragCoord is ALREADY normalized, it is already -1 to 1 when it arrives into the fragment shader so don't normalize it
-We are using opengl 3.3 so please stick to the standards on 3.3
+You can use iTime, iResolution, for your shaders
 
-You can use iTime, iResolution, and iMouse for your shaders
+Make a main function with no parameters, and it must have its end result go to gl_FragColor
 
 Using sdfs and smoothing functions is also something that's encouraged if you are raymarching
 
