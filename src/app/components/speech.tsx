@@ -37,9 +37,7 @@ const Dictaphone = () => {
         const currentWords = transcript.trim().toLowerCase().split(/\s+/);
 
         if (!isTranscribing) {
-            const visualizeIndex = currentWords.findIndex(
-                (word) => word === "visualize"
-            );
+            const visualizeIndex = currentWords.lastIndexOf("visualize");
             if (visualizeIndex !== -1) {
                 const afterVisualize = currentWords
                     .slice(visualizeIndex)
