@@ -170,6 +170,9 @@ def generate_shader_endpoint(request: PromptRequest):
     # remove any extraneous ```glsl or ``` markers
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
 
+    # remove lines with "#version" in it
+    shader_code = "\n".join(line for line in shader_code.splitlines() if "#version" not in line)
+
     return {"shader": shader_code}
 
 
