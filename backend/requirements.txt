@@ -1,10 +1,10 @@
-chromadb
-openai
-python-dotenv
-tiktoken
-google-generativeai
-google-genai
 fastapi
 pydantic
+python-dotenv
+openai
+google-generativeai
 pymongo
-pysqlite3
+bson
+chromadb
+tiktoken
+uvicorn[standard]
