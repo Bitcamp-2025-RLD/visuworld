@@ -8,3 +8,4 @@ bson
 chromadb
 tiktoken
 uvicorn[standard]
+genai
