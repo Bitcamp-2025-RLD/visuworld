@@ -13,7 +13,7 @@ export default function Gallery() {
     if (!page) {
         redirect("/gallery?page_number=1");
     }
-    const serverURL = "http://api.visuworld.tech";
+    const serverURL = "https://api.visuworld.tech";
     const [results, setResults] = useState([]);
     const [nextResults, setNextResults] = useState([]);
     useEffect(() => {
