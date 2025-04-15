@@ -1,6 +1,14 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+frontend/node_modules
+frontend/node_modules/*
+frontend/.next
+frontend/.next/*
+frontend/out
+frontend/build
+frontend/.turbo
+frontend/dist
 /node_modules
 /.pnp
 .pnp.*
