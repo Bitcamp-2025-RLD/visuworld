@@ -10,3 +10,4 @@ tiktoken
 uvicorn[standard]
 genai
 google-genai
+google
