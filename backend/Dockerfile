@@ -13,13 +13,16 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy in your requirements file and install
+# Copy in your requirements file
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    # Uninstall openai just in case a conflicting version was installed
-    && pip uninstall -y openai \
-    # Reinstall openai
+    # Remove any third-party bson package; we only want PyMongo’s internal bson
+    && pip uninstall -y bson || true \
+    # Uninstall openai if a conflicting version is present
+    && pip uninstall -y openai || true \
+    # Reinstall openai cleanly
     && pip install --no-cache-dir openai
 
 # Copy the rest of the application code
