@@ -1,16 +1,28 @@
+# Use Python 3.11 slim as the base image
 FROM python:3.11-slim
 
-# Install needed packages + Rust at build time
-RUN apt-get update && apt-get install -y build-essential curl \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && source /root/.cargo/env \
-    && pip install --upgrade pip
+# Install build-essential and curl (required for building Rust-based wheels)
+RUN apt-get update && apt-get install -y build-essential curl
 
+# Install Rust using rustup, defaults to stable toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# Permanently add Cargo's bin directory to PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Set the working directory inside the container
 WORKDIR /app
-COPY requirements.txt .
-# Build wheels at build time (Rust is installed)
-RUN . /root/.cargo/env && pip install -r requirements.txt
 
-COPY . /app
+# Copy in your requirements file and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose FastAPI’s default port
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host=0.0.0.0", "--port=8000", "--reload"]
+
+# Start the FastAPI app with Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
