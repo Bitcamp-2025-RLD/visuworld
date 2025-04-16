@@ -9,3 +9,4 @@ chromadb
 tiktoken
 uvicorn[standard]
 genai
+google-genai
