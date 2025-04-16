@@ -168,12 +168,10 @@ function Page() {
                                     onCheckedChange={(checked) =>
                                         setIsPro(checked)
                                     }
+                                    disabled={true}
                                 />
-                                <Label
-                                    htmlFor="airplane-mode"
-                                    className="text-xl"
-                                >
-                                    2.5 Pro
+                                <Label htmlFor="airplane-mode text-sm">
+                                    2.5 Pro (coming to prod soon...)
                                 </Label>
                             </div>
                         </div>
