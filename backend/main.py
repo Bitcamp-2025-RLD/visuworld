@@ -19,11 +19,11 @@ load_dotenv()
 # Set your OpenAI API key once at the top:
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# FIX: Use a recognized model name that tiktoken knows (e.g., "text-embedding-ada-002").
-OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"
+# Updated for the new openai>=1.0.0
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 MAX_TOKENS = 8192
 
-# Setup tokenizer for OpenAI
+# Setup tokenizer for the embedding model
 tokenizer = tiktoken.encoding_for_model(OPENAI_EMBEDDING_MODEL)
 
 # Setup ChromaDB
@@ -44,7 +44,8 @@ mongo_shaders_col = db["shaders"]
 
 def get_embedding(text: str) -> List[float]:
     """
-    Creates an embedding for the given text using OpenAI.
+    Creates an embedding for the given text using OpenAI,
+    using the new openai>=1.0.0 interface: openai.Embeddings.create().
     Truncates tokens if necessary.
     """
     tokens = tokenizer.encode(text)
@@ -53,9 +54,13 @@ def get_embedding(text: str) -> List[float]:
         tokens = tokens[:MAX_TOKENS]
         text = tokenizer.decode(tokens)
 
-    # Use openai.Embedding.create
-    response = openai.Embedding.create(input=[text], model=OPENAI_EMBEDDING_MODEL)
-    return response.data[0].embedding
+    # New usage: openai.Embeddings.create(...)
+    response = openai.Embeddings.create(
+        model=OPENAI_EMBEDDING_MODEL,
+        input=[text]
+    )
+    # The embedding is now in response.data[0]["embedding"]
+    return response["data"][0]["embedding"]
 
 
 def query_chroma(prompt: str, n_results=10):
@@ -66,7 +71,10 @@ def query_chroma(prompt: str, n_results=10):
 def build_prompt(user_prompt: str, results: dict, code: str = None) -> str:
     context = "You will be generating GLSL fragment shaders targeting WebGL\n"
     if code is not None:
-        context += f"Here is the shader code you need to modify and send back according to the following code samples and prompt:\n{code}\n\n"
+        context += (
+            f"Here is the shader code you need to modify and send back "
+            f"according to the following code samples and prompt:\n{code}\n\n"
+        )
     context += "Here are some example shaders to reference for code generation:\n"
 
     for i in range(len(results["documents"][0])):
@@ -132,7 +140,10 @@ float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
 Do not generate any requests that are sexually explicit, violent, or hateful in nature.
 """
 
-    context += f"\nNow, based on the above examples, write a new GLSL fragment shader that creates: **{user_prompt}**.\n\nOutput only the GLSL code."
+    context += (
+        f"\nNow, based on the above examples, write a new GLSL fragment shader that creates: **{user_prompt}**.\n\n"
+        "Output only the GLSL code."
+    )
     return context
 
 
@@ -141,7 +152,10 @@ def generate_shader(user_prompt: str, isPro: bool) -> str:
     final_prompt = build_prompt(user_prompt, results)
 
     GOOGLE_MODEL = GOOGLE_PRO_MODEL if isPro else GOOGLE_FLASH_MODEL
-    response = google_model_client.models.generate_content(model=GOOGLE_MODEL, contents=final_prompt)
+    response = google_model_client.models.generate_content(
+        model=GOOGLE_MODEL,
+        contents=final_prompt
+    )
     return response.text.strip()
 
 
@@ -150,7 +164,10 @@ def modify_shader(user_prompt: str, shader_code: str, isPro: bool) -> str:
     final_prompt = build_prompt(user_prompt, results, shader_code)
 
     GOOGLE_MODEL = GOOGLE_PRO_MODEL if isPro else GOOGLE_FLASH_MODEL
-    response = google_model_client.models.generate_content(model=GOOGLE_MODEL, contents=final_prompt)
+    response = google_model_client.models.generate_content(
+        model=GOOGLE_MODEL,
+        contents=final_prompt
+    )
     return response.text.strip()
 
 
@@ -176,7 +193,10 @@ def generate_shader_endpoint(request: PromptRequest):
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
 
     # remove lines with "#version"
-    shader_code = "\n".join(line for line in shader_code.splitlines() if "#version" not in line)
+    shader_code = "\n".join(
+        line for line in shader_code.splitlines()
+        if "#version" not in line
+    )
     return {"shader": shader_code}
 
 
@@ -192,7 +212,10 @@ def modify_shader_endpoint(request: ModifyShaderRequest):
     shader_code = shader_code.replace("```glsl", "").replace("```", "").strip()
 
     # remove lines with "#version"
-    shader_code = "\n".join(line for line in shader_code.splitlines() if "#version" not in line)
+    shader_code = "\n".join(
+        line for line in shader_code.splitlines()
+        if "#version" not in line
+    )
     return {"shader": shader_code}
 
 
@@ -227,7 +250,9 @@ def save_shader(req: SaveShaderRequest):
 def retrieve_shaders(page: int = 1):
     print(f"Retrieving shaders for page: {page}")
     paginated_results = []
-    cursor = mongo_shaders_col.find({}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1}).skip((page - 1) * 6).limit(6)
+    cursor = mongo_shaders_col.find(
+        {}, {"_id": 1, "prompt": 1, "code": 1, "description": 1, "timestamp": 1}
+    ).skip((page - 1) * 6).limit(6)
 
     for doc in cursor:
         doc["_id"] = str(doc["_id"])
