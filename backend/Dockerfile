@@ -19,8 +19,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     # Remove any third-party bson package; we only want PyMongo’s internal bson
-    && pip uninstall -y bson || true \
-    # Uninstall openai if a conflicting version is present
     && pip uninstall -y openai || true \
     # Reinstall openai cleanly
     && pip install --no-cache-dir openai
