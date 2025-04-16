@@ -16,7 +16,11 @@ WORKDIR /app
 # Copy in your requirements file and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    # Uninstall openai just in case a conflicting version was installed
+    && pip uninstall -y openai \
+    # Reinstall openai
+    && pip install --no-cache-dir openai
 
 # Copy the rest of the application code
 COPY . .
