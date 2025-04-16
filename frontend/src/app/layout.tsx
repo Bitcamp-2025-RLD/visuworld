@@ -1,5 +1,5 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+    metadataBase: new URL("https://create.visuworld.tech"),
     title: "VisuWorld – Speak Visual Worlds into Reality",
     description:
         "Turn your voice into rich, interactive landscapes using AI-powered GLSL rendering.",
-    themeColor: "#43AA8B",
     openGraph: {
         title: "VisuWorld – Speak Visual Worlds into Reality",
         description:
@@ -39,6 +39,10 @@ export const metadata: Metadata = {
             "Turn your voice into rich, interactive landscapes using AI-powered GLSL rendering.",
         images: ["/visuworld.png"],
     },
+};
+
+export const viewport: Viewport = {
+    themeColor: "#43AA8B",
 };
 
 export default function RootLayout({
