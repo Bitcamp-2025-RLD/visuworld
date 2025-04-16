@@ -24,7 +24,7 @@ import ShaderView from "./components/shaderview";
 import Dictaphone from "./components/speech";
 
 function Page() {
-    const server = "http://localhost:8000";
+    const server = "http://api.visuworld.tech";
     const [frag, setFrag] = useState<string>("");
     const [fullScreen, setFullScreen] = useState<boolean>(false);
     const [description, setDescription] = useState<string>("");
