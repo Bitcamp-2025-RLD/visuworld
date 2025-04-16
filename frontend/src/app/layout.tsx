@@ -22,14 +22,14 @@ export default function RootLayout({
     return (
         <html lang="en">
             <head>
-                <title>VisuWorld – Speak Visual Worlds into Reality</title>
+                <title>VisuWorld – Speak Worlds into Reality</title>
                 <meta
                     name="description"
                     content="Turn your voice into rich, interactive landscapes using AI-powered GLSL rendering."
                 />
                 <meta
                     property="og:title"
-                    content="VisuWorld – Speak Visual Worlds into Reality"
+                    content="VisuWorld – Speak Worlds into Reality"
                 />
                 <meta
                     property="og:description"
@@ -46,7 +46,7 @@ export default function RootLayout({
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta
                     name="twitter:title"
-                    content="VisuWorld – Speak Visual Worlds into Reality"
+                    content="VisuWorld – Speak Worlds into Reality"
                 />
                 <meta
                     name="twitter:description"
