@@ -43,22 +43,27 @@ function Page() {
             const shaderCode = await file.text();
             setFrag(shaderCode);
         }
-        readShaders();
 
         async function getShader() {
             const id = searchParams.get("id");
             if (id != null) {
-                const res = await fetch(
-                    server + "/retrieve_shader?shader_id=" + id,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                    }
-                );
-                const data = await res.json();
-                setFrag(data.code);
+                try {
+                    const res = await fetch(
+                        server + "/retrieve_shader?shader_id=" + id,
+                        {
+                            method: "GET",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                        }
+                    );
+                    const data = await res.json();
+                    setFrag(data.code);
+                } catch (error) {
+                    readShaders();
+                }
+            } else {
+                readShaders();
             }
         }
         getShader();
