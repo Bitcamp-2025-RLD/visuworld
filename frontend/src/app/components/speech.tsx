@@ -231,7 +231,7 @@ const Dictaphone = ({
             </div>
 
             {/* Bottom overlay: transcript or spinner */}
-            <div className="absolute bottom-4 left-4 right-4">
+            <div className="absolute top-[480px] sm:top-auto sm:bottom-4 left-4 right-4">
                 {showLoading ? (
                     <div className="flex flex-col gap-2 items-center">
                         <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />

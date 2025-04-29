@@ -98,30 +98,27 @@ export default function Gallery() {
                     </Button>
                 </div>
             </header>
-            <div className="grid grid-cols-3 grid-rows-2 h-[90vh] w-full gap-8 p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 grid-rows-auto h-[90vh] w-full gap-4 p-4">
                 {results.map((shader: any, index: number) => (
                     <Card
                         key={index}
-                        className="bg-gray-800 rounded-lg shadow-md p-2"
+                        className="bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 md:p-2"
                     >
-                        <CardTitle className="mt-2 mx-2 font-mono text-xl font-bold text-white">
+                        <CardTitle className="mt-2 mx-2 font-mono text-lg sm:text-xl font-bold text-white">
                             {shader.description.replace(
                                 /\b\w/g,
                                 (char: string) => char.toUpperCase()
                             )}
                         </CardTitle>
-                        <CardContent className="w-full rounded-xl min-h-[18vh]">
+                        <CardContent className="w-full rounded-xl min-h-[24vh] sm:min-h-[28vh] md:min-h-[18vh]">
                             <ShaderView
                                 key={index}
                                 fragShader={shader.code}
                                 vertShader=""
                             ></ShaderView>
                         </CardContent>
-                        <CardFooter
-                            className="flew justify-between pb-2
-                        "
-                        >
-                            <div className="overflow-hidden text-gray-200 italic text-nowrap">
+                        <CardFooter className="flex justify-between pb-2">
+                            <div className="overflow-hidden text-gray-200 italic text-sm sm:text-base text-nowrap">
                                 "
                                 {shader.prompt.length > 25
                                     ? shader.prompt.charAt(0).toUpperCase() +

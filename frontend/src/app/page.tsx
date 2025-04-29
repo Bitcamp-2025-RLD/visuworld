@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { loadLanguage } from "@uiw/codemirror-extensions-langs";
 import CodeMirror, { oneDark } from "@uiw/react-codemirror";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ShaderView from "./components/shaderview";
 import Dictaphone from "./components/speech";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 function Page() {
     const server = "https://api.visuworld.tech";
@@ -32,6 +33,7 @@ function Page() {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [saveLoading, setSaveLoading] = useState<boolean>(false);
     const [shaderLoading, setShaderLoading] = useState<boolean>(false);
+    const [sheetOpen, setSheetOpen] = useState<boolean>(false); // Add state for sheet open/close
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
     const router = useRouter();
@@ -110,32 +112,86 @@ function Page() {
 
     return (
         <div className="h-screen overflow-hidden w-screen flex flex-col bg-gray-600 text-gray-900">
-            {/* Header */}
             <header className="bg-gray-800 text-white p-6 shadow-md h-[10vh] flex gap-3 items-center justify-between">
-                <Link href={"/"}>
-                    <div className="flex flex-row gap-1 items-center justify-center">
-                        <Image
-                            src="/logo.png"
-                            alt="VisuWorld Logo"
-                            width={200}
-                            height={200}
-                            className="h-14 w-auto"
-                        />
-                        <div className="text-2xl font-bold">VisuWorld</div>
+                <div className="flex items-center gap-3">
+                    <div className="sm:hidden">
+                        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                            <SheetTrigger asChild>
+                                <Button size={"lg"} className="text-white p-2">
+                                    <Menu className="h-6 w-6" /> 
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="bg-gray-800 text-white">
+                                <SheetHeader>
+                                    <div className="flex flex-col items-center">
+                                        <Image
+                                            src="/logo.png"
+                                            alt="VisuWorld Logo"
+                                            width={150}
+                                            height={150}
+                                            className="h-60 w-auto"
+                                        />
+                                        <SheetTitle className="text-4xl text-white font-bold">
+                                            VisuWorld
+                                        </SheetTitle>
+                                    </div>
+                                </SheetHeader>
+                                <div className="flex flex-col gap-1">
+                                    <div className="border-t border-white"></div>
+                                    <Button
+                                        onClick={() => {
+                                            router.push("/gallery");
+                                            setSheetOpen(false); // Close the sheet
+                                        }}
+                                        size={"lg"}
+                                        className="w-full font-medium text-2xl bg-transparent hover:bg-transparent"
+                                    >
+                                        Gallery
+                                    </Button>
+                                    <div className="border-t border-white"></div>
+                                    <Button
+                                        onClick={() => {
+                                            setFullScreen(!fullScreen);
+                                            setSheetOpen(false); // Close the sheet
+                                        }}
+                                        size={"lg"}
+                                        className="w-full font-medium text-2xl bg-transparent hover:bg-transparent"
+                                    >
+                                        {fullScreen ? "Minimize" : "Fullscreen"}
+                                    </Button>
+                                    <div className="border-t border-white"></div>
+                                </div>
+                            </SheetContent>
+                        </Sheet>
                     </div>
-                </Link>
-                <div className="flex gap-4 items-center justify-center">
+
+                    <Link href={"/"}>
+                        <div className="flex flex-row gap-1 items-center justify-center">
+                            <Image
+                                src="/logo.png"
+                                alt="VisuWorld Logo"
+                                width={200}
+                                height={200}
+                                className="h-14 w-auto"
+                            />
+                            <div className="text-2xl font-bold">VisuWorld</div>
+                        </div>
+                    </Link>
+                </div>
+
+                {/* Desktop Buttons */}
+                <div className="hidden sm:flex gap-4 items-center justify-center">
                     <Button
                         onClick={() => router.push("/gallery")}
                         size={"lg"}
-                        className=" transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg text-white"
+                        className="transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg text-white"
                     >
                         Gallery
                     </Button>
                     <Button
                         onClick={() => setFullScreen(!fullScreen)}
                         size={"lg"}
-                        className=" transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg  text-white"
+                        className="transition duration-200 ease-in-out text-xl px-4 py-2 rounded-lg text-white"
                     >
                         {fullScreen ? "Minimize" : "Fullscreen"}
                     </Button>
@@ -149,7 +205,7 @@ function Page() {
                 }`}
             >
                 {/* Dictaphone - Top of Left Column */}
-                <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-2 border-2 border-gray-900 row-span-2 col-span-1">
+                <div className="bg-gray-800 h-full w-full rounded-2xl text-white p-4 sm:p-4 border-2 border-gray-900 row-span-2 col-span-1 overflow-auto max-h-[40vh] sm:max-h-full space-y-4 sm:space-y-2">
                     <Dictaphone
                         generateShader={generateShader}
                         modifyShader={modifyShader}
