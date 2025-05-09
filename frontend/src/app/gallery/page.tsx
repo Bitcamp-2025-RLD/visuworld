@@ -115,6 +115,7 @@ export default function Gallery() {
                                 key={index}
                                 fragShader={shader.code}
                                 vertShader=""
+                                base64_texture={shader.texture}
                             ></ShaderView>
                         </CardContent>
                         <CardFooter className="flex justify-between pb-2">

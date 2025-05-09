@@ -4,6 +4,8 @@ import SpeechRecognition, {
     useSpeechRecognition,
 } from "react-speech-recognition";
 import { toast } from "sonner";
+import useTextureStore from './texture'
+
 
 const LOADING_MESSAGES = [
     "Tracing all the rays...",
@@ -57,6 +59,18 @@ const Dictaphone = ({
     useEffect(() => {
         setHasMounted(true);
     }, []);
+
+    const setTexture = useTextureStore((state: any) => state.setTexture);
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+          const file = e.target.files[0];
+          const fileReader = new FileReader();
+          fileReader.onloadend = () => {
+            setTexture(fileReader.result as string);
+          }
+          fileReader.readAsDataURL(file);
+        }
+    };
 
     /**
      * Show rotating LOADING_MESSAGES every 2s if shaderLoading = true.
@@ -228,6 +242,18 @@ const Dictaphone = ({
                     programming paradigms. Peer into the other side of the
                     screen, and let your words shape the world.
                 </p>
+            </div>
+
+            <div>
+                <label htmlFor="file-upload" className="cursor-pointer border-2 border-gray-300 text-sm rounded-lg p-2 bg-gray-50 hover:bg-gray-100 transition duration-300 text-black">
+                    Upload Texture
+                </label>
+                <input 
+                    type="file" 
+                    id="file-upload" 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                />
             </div>
 
             {/* Bottom overlay: transcript or spinner */}

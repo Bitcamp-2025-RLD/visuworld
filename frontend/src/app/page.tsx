@@ -23,8 +23,9 @@ import { toast } from "sonner";
 import ShaderView from "./components/shaderview";
 import Dictaphone from "./components/speech";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import useTextureStore from './components/texture';
 
-function Page() {
+function Page(p0: (state: any) => any) {
     const server = "https://api.visuworld.tech";
     const [frag, setFrag] = useState<string>("");
     const [fullScreen, setFullScreen] = useState<boolean>(false);
@@ -38,7 +39,11 @@ function Page() {
     const id = searchParams.get("id");
     const router = useRouter();
     const [isPro, setIsPro] = useState<boolean>(false);
+    const texture_blob: string = useTextureStore((state: any) => state.base64);
+    const setTexture = useTextureStore((state: any) => state.setTexture);
 
+
+    
     useEffect(() => {
         async function readShaders() {
             const file = await fetch("/shader.frag");
@@ -60,6 +65,9 @@ function Page() {
                         }
                     );
                     const data = await res.json();
+                    //This has to be above setFrag, setFrag triggers the loading of the shader and we want our texture to be included in that
+                    if (data.texture != "" && data.texture != null)
+                        await setTexture(data.texture);
                     setFrag(data.code);
                 } catch (error) {
                     readShaders();
@@ -290,6 +298,7 @@ function Page() {
                                                                     {
                                                                         description,
                                                                         code: frag,
+                                                                        texture_blob,
                                                                         prompt,
                                                                     }
                                                                 ),
@@ -360,7 +369,7 @@ function Page() {
                                 : "rounded-2xl"
                         } w-full  overflow-hidden shadow-md row-span-5 col-start-2 col-span-1 border-2 border-gray-900`}
                     >
-                        <ShaderView fragShader={frag} vertShader="" />
+                        <ShaderView fragShader={frag} vertShader="" base64_texture={null} />
                     </div>
                 )}
             </div>

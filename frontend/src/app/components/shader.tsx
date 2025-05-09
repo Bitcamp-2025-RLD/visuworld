@@ -1,18 +1,24 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import useTextureStore from './texture'
 
 interface ShaderProps {
     vertShader: string;
     fragShader: string;
+    iMouse: RefObject<{x: number, y: number}>;
+    base64_texture: string | null;
 }
 
-export default function Shader({ vertShader, fragShader }: ShaderProps) {
+export default function Shader({ vertShader, fragShader, iMouse, base64_texture}: ShaderProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const materialRef = useRef<THREE.ShaderMaterial | null>(null);
     const meshRef = useRef<THREE.Mesh | null>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const animationIdRef = useRef<number | null>(null);
+    const loaded_texture = useTextureStore((state: any) => state.texture);
+    const texture = (base64_texture != null && base64_texture != "") ? new THREE.TextureLoader().load(base64_texture) : loaded_texture;
+
 
     useEffect(() => {
         const container = containerRef.current;
@@ -48,6 +54,8 @@ export default function Shader({ vertShader, fragShader }: ShaderProps) {
             uniforms: {
                 iTime: { value: 0 },
                 iResolution: { value: new THREE.Vector2(width, height) },
+                iMouse: { value: new THREE.Vector2(iMouse.current.x, iMouse.current.y)},
+                iChannel0: { value: texture}
             },
         });
         materialRef.current = material;
@@ -62,6 +70,7 @@ export default function Shader({ vertShader, fragShader }: ShaderProps) {
         // Animation loop
         const animate = () => {
             material.uniforms.iTime.value = clock.getElapsedTime();
+            material.uniforms.iMouse.value.set(iMouse.current.x, iMouse.current.y);
             renderer.render(scene, camera);
             animationIdRef.current = requestAnimationFrame(animate);
         };
