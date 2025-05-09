@@ -60,7 +60,7 @@ const Dictaphone = ({
         setHasMounted(true);
     }, []);
 
-    const setTexture = useTextureStore((state: any) => state.setTexture);
+    const setTexture = useTextureStore((state) => state.setTexture);
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
           const file = e.target.files[0];

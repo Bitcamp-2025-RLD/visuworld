@@ -25,7 +25,7 @@ import Dictaphone from "./components/speech";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import useTextureStore from './components/texture';
 
-function Page(p0: (state: any) => any) {
+function Page() {
     const server = "https://api.visuworld.tech";
     const [frag, setFrag] = useState<string>("");
     const [fullScreen, setFullScreen] = useState<boolean>(false);
@@ -39,8 +39,8 @@ function Page(p0: (state: any) => any) {
     const id = searchParams.get("id");
     const router = useRouter();
     const [isPro, setIsPro] = useState<boolean>(false);
-    const texture_blob: string = useTextureStore((state: any) => state.base64);
-    const setTexture = useTextureStore((state: any) => state.setTexture);
+    const texture_blob: string = useTextureStore((state) => state.base64);
+    const setTexture = useTextureStore((state) => state.setTexture);
 
 
     

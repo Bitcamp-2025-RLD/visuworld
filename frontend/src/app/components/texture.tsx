@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import * as THREE from "three";
 
-const useTextureStore = create((set) => ({
+interface TextureStore {
+  texture: THREE.Texture;
+  base64: string;
+  setTexture: (data: string) => void;
+}
+
+const useTextureStore = create<TextureStore>((set) => ({
   texture: new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat),
   base64: "",
   setTexture: (base64_: string) => {

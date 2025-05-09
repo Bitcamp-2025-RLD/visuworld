@@ -16,7 +16,7 @@ export default function Shader({ vertShader, fragShader, iMouse, base64_texture}
     const meshRef = useRef<THREE.Mesh | null>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const animationIdRef = useRef<number | null>(null);
-    const loaded_texture = useTextureStore((state: any) => state.texture);
+    const loaded_texture = useTextureStore((state) => state.texture);
     const texture = (base64_texture != null && base64_texture != "") ? new THREE.TextureLoader().load(base64_texture) : loaded_texture;
 
 
