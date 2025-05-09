@@ -1,159 +1,173 @@
-precision highp float;
-
 uniform vec2 iResolution;
 uniform float iTime;
 
-// Raymarching settings
-const int MAX_STEPS = 100;
-const float MAX_DIST = 100.0;
-const float SURF_DIST = 0.001;
-
-// --- SDF for the Fractal Shape (Mandelbox variation) ---
-// This function defines the distance to the surface of our fractal.
-float sdFractal(vec3 p) {
-    vec3 z = p;
-    float scale = 2.1 + 0.2 * sin(iTime * 0.3); // Mandelbox scaling parameter, animated slightly
-    float minRadius2 = 0.25; // Inner radius for sphere folding
-    float fixedRadius2 = 1.0; // Outer radius for sphere folding
-    float dr = 1.0; // Derivative factor for distance estimation
-
-    // Apply some initial rotation based on time
-    float angle = iTime * 0.1;
-    mat2 rot = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-    z.xz = rot * z.xz;
-    z.xy = rot * z.xy;
-
-    for (int i = 0; i < 6; i++) { // Increase iterations for more detail
-        // Box folding: clamp coordinates to [-1, 1], reflect outside values
-        z = clamp(z, -1.0, 1.0) * 2.0 - z;
-
-        // Sphere folding: invert points inside minRadius or outside fixedRadius
-        float r2 = dot(z, z);
-        if (r2 < minRadius2) {
-            float temp = fixedRadius2 / minRadius2;
-            z *= temp;
-            dr *= temp;
-        } else if (r2 < fixedRadius2) {
-            float temp = fixedRadius2 / r2;
-            z *= temp;
-            dr *= temp;
-        }
-
-        // Scaling and offset (z = scale*z + p, where p is the original point)
-        z = z * scale + p;
-        dr = dr * abs(scale) + 1.0; // Update derivative approximation
-    }
-
-    // Base shape after iterations - a sphere
-    // The final distance is the length of the iterated point z minus a radius,
-    // divided by the derivative dr to approximate the true distance.
-    float dist = (length(z) - 1.5) / dr;
-
-    return dist;
+// Signed Distance Functions (SDFs)
+float sdSphere( vec3 p, float s ) {
+  return length(p)-s;
 }
 
-// --- Raymarching Function ---
-// Marches a ray from origin 'ro' in direction 'rd' and returns distance to surface.
-float raymarch(vec3 ro, vec3 rd) {
-    float dO = 0.0; // Distance traveled along the ray
-    for(int i=0; i<MAX_STEPS; i++) {
-        vec3 p = ro + rd * dO; // Current point along the ray
-        float dS = sdFractal(p); // Distance from current point to the surface
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r ) {
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
+}
+
+// Smooth minimum function
+float smin( float a, float b, float k ) {
+    float h = clamp( 0.5 + 0.5*(b-a)/k, 0.0, 1.0 );
+    return mix( b, a, h ) - k*h*(1.0-h);
+}
+
+// Scene SDF - Defines the person and ground
+float map( vec3 p ) {
+    // Person's parameters
+    float headRadius = 0.25;
+    vec3 headPos = vec3(0.0, 1.3, 0.0);
+
+    vec3 torsoA = vec3(0.0, 0.5, 0.0);
+    vec3 torsoB = vec3(0.0, 1.1, 0.0);
+    float torsoRadius = 0.18;
+
+    float legRadius = 0.1;
+    float legLength = 0.6;
+    float legSpread = 0.15;
+    vec3 hipPos = torsoA; // Legs start from the bottom of the torso
+
+    float armRadius = 0.08;
+    float armLength = 0.5;
+    vec3 shoulderPos = torsoB + vec3(0.0, -0.1, 0.0); // Arms start near the top of the torso
+    float shoulderWidth = torsoRadius + armRadius - 0.02; // Adjust based on radii
+
+    // Head
+    float d = sdSphere(p - headPos, headRadius);
+
+    // Torso
+    d = smin(d, sdCapsule(p, torsoA, torsoB, torsoRadius), 0.1);
+
+    // Legs (Static pose)
+    // Left Leg
+    vec3 leftLegA = hipPos + vec3(-legSpread, 0.0, 0.0);
+    vec3 leftLegB = leftLegA + vec3(0.0, -legLength, 0.0);
+    d = smin(d, sdCapsule(p, leftLegA, leftLegB, legRadius), 0.05);
+
+    // Right Leg
+    vec3 rightLegA = hipPos + vec3(legSpread, 0.0, 0.0);
+    vec3 rightLegB = rightLegA + vec3(0.0, -legLength, 0.0);
+    d = smin(d, sdCapsule(p, rightLegA, rightLegB, legRadius), 0.05);
+
+    // Arms
+    // Left Arm (Waving)
+    float waveAngle = sin(iTime * 3.0) * 0.8 + 3.14159265359 * 0.6; // Waving animation
+    vec3 leftShoulder = shoulderPos + vec3(-shoulderWidth, 0.0, 0.0);
+    vec3 leftHand = leftShoulder + vec3(cos(waveAngle) * armLength, sin(waveAngle) * armLength, 0.0);
+    d = smin(d, sdCapsule(p, leftShoulder, leftHand, armRadius), 0.05);
+
+    // Right Arm (Static down)
+    vec3 rightShoulder = shoulderPos + vec3(shoulderWidth, 0.0, 0.0);
+    vec3 rightHand = rightShoulder + vec3(0.05, -armLength, -0.05); // Slightly bent pose
+    d = smin(d, sdCapsule(p, rightShoulder, rightHand, armRadius), 0.05);
+
+    // Ground plane - position slightly below the feet
+    float groundLevel = -legLength;
+    float groundDist = p.y - groundLevel;
+    d = min(d, groundDist); // Combine person SDF with ground SDF
+
+    return d;
+}
+
+// Calculate normal using the gradient of the SDF
+vec3 calcNormal( vec3 p ) {
+    const float eps = 0.001; // Epsilon for gradient calculation
+    vec2 e = vec2(1.0, -1.0) * 0.5773; // Hexagonal sampling pattern offsets
+    return normalize( e.xyy * map( p + e.xyy*eps ) +
+                      e.yyx * map( p + e.yyx*eps ) +
+                      e.yxy * map( p + e.yxy*eps ) +
+                      e.xxx * map( p + e.xxx*eps ) );
+    /* // Simpler but potentially less accurate method
+    vec3 n = vec3(
+        map(p + vec3(eps, 0, 0)) - map(p - vec3(eps, 0, 0)),
+        map(p + vec3(0, eps, 0)) - map(p - vec3(0, eps, 0)),
+        map(p + vec3(0, 0, eps)) - map(p - vec3(0, 0, eps))
+    );
+    return normalize(n);
+    */
+}
+
+// Raymarching function
+float raymarch( vec3 ro, vec3 rd ) {
+    float dO = 0.0; // Distance from Origin
+    for(int i=0; i<128; i++) { // Max steps
+        vec3 p = ro + rd * dO;
+        float dS = map(p); // Distance to Scene
         dO += dS;
-        // If we're close enough, or too far, stop marching
-        if(dO > MAX_DIST || abs(dS) < SURF_DIST) break;
+        // Check for hit (close enough) or exceeding max distance
+        if(abs(dS) < 0.001 || dO > 100.0) break;
     }
     return dO;
 }
 
-// --- Normal Calculation ---
-// Calculates the surface normal at point 'p' using the gradient of the SDF.
-vec3 getNormal(vec3 p) {
-    vec2 e = vec2(SURF_DIST * 0.5, 0.0); // Small epsilon for gradient calculation
-    vec3 n = vec3(
-        sdFractal(p + e.xyy) - sdFractal(p - e.xyy),
-        sdFractal(p + e.yxy) - sdFractal(p - e.yxy),
-        sdFractal(p + e.yyx) - sdFractal(p - e.yyx)
-    );
-    return normalize(n); // Return the normalized gradient vector
+// Basic pseudo-random number generator
+float random (vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
 }
 
-// --- Rainbow Color Palette ---
-// Generates a rainbow color based on input 't'. (From IQ's palette article)
-vec3 palette( float t ) {
-    vec3 a = vec3(0.5, 0.5, 0.5); // Base color (grey)
-    vec3 b = vec3(0.5, 0.5, 0.5); // Amplitude (controls saturation)
-    vec3 c = vec3(1.0, 1.0, 1.0); // Frequency (controls color spread)
-    vec3 d = vec3(0.00, 0.33, 0.67); // Phase (controls starting color)
-    // The cosine function creates smooth color transitions
-    return a + b*cos( 6.28318*(c*t+d) );
-}
 
-// --- Main Shader Function ---
 void main() {
-    // Normalize fragment coordinates to range roughly [-aspect, aspect] x [-1, 1]
+    // Normalized pixel coordinates (from -1 to 1) centered
     vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
 
-    // --- Camera Setup ---
-    float timeParam = iTime * 0.25;
-    vec3 ro = vec3(3.8 * cos(timeParam), 2.5, 3.8 * sin(timeParam)); // Orbiting camera position
-    vec3 target = vec3(0.0, 0.5, 0.0); // Look towards this point
-    vec3 camUp = vec3(0.0, 1.0, 0.0); // Up direction
+    // Camera Setup
+    vec3 ro = vec3( 0.0, 1.0, 4.0 ); // Ray origin (camera position) - slightly elevated
+    vec3 lookAt = vec3( 0.0, 0.5, 0.0 ); // Point camera is looking at (center of person)
+    vec3 camUp = vec3(0.0, 1.0, 0.0); // Camera up direction
 
-    // Calculate camera basis vectors
-    vec3 ww = normalize(target - ro); // Forward direction
-    vec3 uu = normalize(cross(ww, camUp)); // Right direction
-    vec3 vv = normalize(cross(uu, ww)); // Up direction
+    // Create camera basis vectors
+    vec3 ww = normalize( lookAt - ro ); // Forward vector
+    vec3 uu = normalize( cross(ww, camUp) ); // Right vector
+    vec3 vv = normalize( cross(uu, ww) ); // Up vector
 
-    // Calculate ray direction based on fragment coordinates and FOV (zoom)
-    vec3 rd = normalize(uv.x * uu + uv.y * vv + 2.0 * ww); // FOV approx 1/2.0 = 0.5
+    // Create view ray direction
+    float fov = 1.5; // Field of View adjustment
+    vec3 rd = normalize( uv.x*uu + uv.y*vv + fov*ww );
 
-    // --- Raymarch to find intersection ---
+    // Perform raymarching
     float dist = raymarch(ro, rd);
 
-    // --- Shading ---
-    vec3 col = vec3(0.05, 0.05, 0.1); // Default background color (dark blue)
+    // Default background color (sky blue)
+    vec3 col = vec3(0.5, 0.7, 0.9);
 
-    if (dist < MAX_DIST) { // If the ray hit the fractal
-        // Calculate hit point and surface normal
-        vec3 p = ro + rd * dist;
-        vec3 normal = getNormal(p);
+    // If the ray hit something within the max distance
+    if (dist < 100.0) {
+        vec3 p = ro + rd * dist; // Hit point
+        vec3 normal = calcNormal(p); // Normal at hit point
 
-        // --- Lighting ---
-        vec3 lightPos = vec3(4.0 * cos(iTime * 0.5), 4.0, 4.0 * sin(iTime * 0.5)); // Moving light source
-        vec3 lightDir = normalize(lightPos - p);
-        float diffuse = pow(max(dot(normal, lightDir), 0.0), 0.8); // Diffuse term with slight falloff adjustment
-        float ambient = 0.25; // Ambient light contribution
+        // Simple lighting (directional light)
+        vec3 lightDir = normalize(vec3(0.8, 0.7, -0.5)); // Light direction
+        float diffuse = max(dot(normal, lightDir), 0.0); // Basic diffuse term
+        float ambient = 0.2; // Ambient light contribution
 
-        // --- Coloring ---
-        // Base the color calculation on the hit point's position
-        // Using dot products mixes coordinates for interesting patterns
-        float colorInput = dot(p, normalize(vec3(1.0, 0.8, 0.6))) * 0.2;
-        // Add contribution from the normal's orientation
-        colorInput += dot(normal, vec3(0.0, 1.0, 0.0)) * 0.1;
-        // Slowly shift the entire palette over time
-        colorInput += iTime * 0.05;
+        // Determine color based on what was hit
+        float groundLevel = -0.6; // Matches the ground level in map()
+        if (p.y < groundLevel + 0.01) { // Check if the hit point is on the ground plane
+            // Checkered ground pattern
+            float check = mod(floor(p.x * 2.0) + floor(p.z * 2.0), 2.0);
+            vec3 groundColor = mix(vec3(0.3, 0.5, 0.2), vec3(0.2, 0.3, 0.1), check);
+            col = groundColor * (diffuse + ambient);
+        } else { // Hit the person
+            vec3 personColor = vec3(0.9, 0.65, 0.5); // A simple skin-like tone
+             // Add slight color variation based on normal/position for detail
+            personColor *= (0.8 + 0.2 * normal.y);
+            col = personColor * (diffuse + ambient);
+        }
 
-        // Generate the rainbow color using the palette function
-        vec3 baseCol = palette(colorInput);
-
-        // Combine lighting and base color
-        col = baseCol * (ambient + diffuse * 0.8);
-
-        // Add a subtle rim light effect for definition
-        float rim = pow(1.0 - max(dot(normal, -rd), 0.0), 3.0);
-        col += baseCol * rim * 0.6;
-
-        // --- Fog ---
-        // Fade the color to the background based on distance
-        float fogFactor = smoothstep(MAX_DIST * 0.1, MAX_DIST * 0.9, dist);
-        col = mix(col, vec3(0.05, 0.05, 0.1), fogFactor);
-
+        // Add simple fog effect based on distance
+        float fogFactor = 1.0 - exp(-0.02 * dist * dist);
+        col = mix(col, vec3(0.5, 0.7, 0.9), fogFactor); // Mix with sky color for fog
     }
 
-    // Apply simple gamma correction
+    // Gamma correction (approx)
     col = pow(col, vec3(0.4545));
 
-    // Output the final color
+    // Output final color
     gl_FragColor = vec4(col, 1.0);
 }
